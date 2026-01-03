@@ -7,7 +7,7 @@ export type Board = number[];
 export interface HistoryStep {
     boardState: Board;      // Foto papan saat detik ini
     activeHoleIndex: number | null; // Lubang mana yang sedang diisi/diambil (untuk efek lampu)
-    action: 'PICK' | 'DROP' | 'STOP'; // Lagi ngapain? (Optional, buat debugging)
+    action: 'PICK' | 'DROP' | 'STOP' | 'CAPTURE'; // Lagi ngapain? (Optional, buat debugging)
     hand: number;
 }
 
