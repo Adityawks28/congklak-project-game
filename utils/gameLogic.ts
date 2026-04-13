@@ -36,6 +36,31 @@ const isValidMove = (index: number, player: Player, board: Board): boolean => {
 };
 // ... (End Helper) ...
 
+// --- GAME OVER DETECTION ---
+export const checkGameOver = (board: Board): boolean => {
+    const sideA = board.slice(0, 7).reduce((sum, v) => sum + v, 0);
+    const sideB = board.slice(8, 15).reduce((sum, v) => sum + v, 0);
+    return sideA === 0 || sideB === 0;
+};
+
+export const collectRemaining = (board: Board): Board => {
+    const newBoard = [...board];
+    for (let i = 0; i <= 6; i++) {
+        newBoard[7] += newBoard[i];
+        newBoard[i] = 0;
+    }
+    for (let i = 8; i <= 14; i++) {
+        newBoard[15] += newBoard[i];
+        newBoard[i] = 0;
+    }
+    return newBoard;
+};
+
+export const getWinner = (board: Board): Player | 'DRAW' => {
+    if (board[7] > board[15]) return 'A';
+    if (board[15] > board[7]) return 'B';
+    return 'DRAW';
+};
 
 // --- CORE LOGIC WITH RECORDING ---
 export const playCongklakMove = (
@@ -50,7 +75,7 @@ export const playCongklakMove = (
     }
 
     // 2. Setup
-    let newBoard = [...currentBoard];
+    const newBoard = [...currentBoard];
     // RECORDING START: Siapkan array kosong
     const history: HistoryStep[] = [];
 
