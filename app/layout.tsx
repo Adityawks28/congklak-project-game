@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Baloo_2 } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const baloo = Baloo_2({
+  variable: "--font-baloo",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Congklak - Nusantara Heritage Edition",
-  description: "A traditional Indonesian Congklak board game",
+  title: "Congklak",
+  description: "The Indonesian game of holes and marbles. Play a friend or the computer.",
 };
 
 export default function RootLayout({
@@ -24,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${baloo.variable} antialiased`}>
         {children}
       </body>
     </html>

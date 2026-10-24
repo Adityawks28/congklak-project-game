@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Congklak
 
-## Getting Started
+The Indonesian game of holes and marbles, in the browser. Play a friend on
+one device, or the computer at Easy, Medium or Hard.
 
-First, run the development server:
+Play it: https://adityawks28.github.io/congklak-project-game/
+
+## How to play
+
+1. Each side has 7 small holes and one big store. Every small hole starts with 7 marbles, 98 in all.
+2. On your turn, scoop up all the marbles in one of your holes and drop them one at a time into the next holes, going clockwise: into your own store, never your rival's.
+3. Last marble in your store: go again. Last marble in a hole that has marbles: scoop them up and keep sowing.
+4. Last marble in an empty hole on your side: capture it and everything in the hole across. If that hole is empty, your turn ends.
+5. The game ends when either side is empty. Each player adds what is left on their side to their store, and the bigger store wins.
+
+## Rules options
+
+- **Simple** (the default): one game, played as above.
+- **Traditional**: several rounds. After each round, players refill their holes with 7 marbles each from their stores; holes they cannot fill are burnt (skipped by both players) for that round. The game ends when someone cannot fill a single hole.
+
+The two pixel characters beside the board explain the rules and the game's
+history, with links to the sources, in a speech cloud.
+
+## Run it locally
+
+Needs Node.js 24, the version CI uses.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
+npm run check   # rules, layout, computer opponent and text checks (node:test)
+npm run lint
+npm run build   # the static site in out/, as deployed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Every push to `main` runs the checks, lint and build, then publishes `out/`
+to GitHub Pages (`.github/workflows/ci.yml`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Where things live
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `utils/gameLogic.ts`: the rules, as pure functions (`utils/gameLogic.check.ts` checks them).
+- `utils/ai.ts`: the computer opponent.
+- `hooks/useGame.ts`: game state, move playback, settings and the saved tally.
+- `components/board/`: the drawn board and the move effects.
+- `components/characters/` and `content/story.ts`: the two characters and what they say.
+- Design document: `docs/superpowers/specs/2026-10-24-congklak-storybook-redesign-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-10-24-congklak-storybook-redesign.md`

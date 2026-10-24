@@ -1,9 +1,9 @@
-import CongklakBoard from '../components/CongklakBoard';
+import CongklakGame from '@/components/CongklakGame';
 
 export default function Home() {
   return (
     <main>
-      <CongklakBoard />
+      <CongklakGame />
     </main>
-  )
+  );
 }
