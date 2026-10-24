@@ -42,6 +42,7 @@ export default function CongklakGame() {
         <h1>Congklak</h1>
         <p className="tagline">The Indonesian game of holes and marbles. Play a friend or the computer.</p>
       </header>
+      <ControlBar game={game} />
       <p className="status" aria-live="polite">
         {game.status}
       </p>
@@ -66,7 +67,6 @@ export default function CongklakGame() {
         <PixelPerson sprite={WOMAN} className="char-woman" label="Ask the woman in the kebaya about congklak" onOpen={setAsking} />
       </div>
       {asking && <StoryCloud anchor={asking} mode={game.settings.mode} onClose={() => setAsking(null)} />}
-      <ControlBar game={game} />
       <p className="tally">
         Wins: {names.A} {tally.A}, {names.B} {tally.B}. Draws: {tally.draws}.
         {match && ` Best of 3: ${names.A} ${match.A}, ${names.B} ${match.B}.`}
