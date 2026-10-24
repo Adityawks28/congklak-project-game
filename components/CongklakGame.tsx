@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Board from './board/Board';
 import GameOverDialog from './GameOverDialog';
+import MoveEffects from './board/MoveEffects';
 import { useGame } from '@/hooks/useGame';
 import { STORE, legalMoves } from '@/utils/gameLogic';
 import type { GameState } from '@/utils/gameLogic';
@@ -42,6 +43,7 @@ export default function CongklakGame() {
         onPick={game.play}
         onPreview={() => {}}
         onSkip={game.skip}
+        overlay={o => <MoveEffects view={game.view} orientation={o} />}
       />
       <div className="actions">
         <button type="button" className="btn" onClick={game.newGame}>

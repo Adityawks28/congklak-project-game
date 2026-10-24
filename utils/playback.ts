@@ -34,7 +34,7 @@ export async function playFrames(
       return 'done';
     }
     onFrame(frames[i], i);
-    if (i < frames.length - 1) await sleep(frameDelay(frames[i], speed, frames.length));
+    await sleep(frameDelay(frames[i], speed, frames.length));
   }
-  return 'done';
+  return ctl.cancelled() ? 'cancelled' : 'done';
 }

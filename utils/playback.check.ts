@@ -12,13 +12,19 @@ function recorder() {
   return { delays, sleep: async (ms: number) => { delays.push(ms); } };
 }
 
-test('normal plays every frame in order, with no wait after the last', async () => {
+test('normal plays every frame in order and holds the last one, so its hop can finish', async () => {
   const seen: number[] = [];
   const r = recorder();
   const res = await playFrames(five, 'normal', { cancelled: () => false, skipping: () => false }, (_f, i) => seen.push(i), r.sleep);
   assert.equal(res, 'done');
   assert.deepEqual(seen, [0, 1, 2, 3, 4]);
-  assert.deepEqual(r.delays, five.slice(0, -1).map(f => frameDelay(f, 'normal', five.length)));
+  assert.deepEqual(r.delays, five.map(f => frameDelay(f, 'normal', five.length)));
+});
+
+test('a reset while the last frame is held cancels the move', async () => {
+  let shown = 0;
+  const res = await playFrames(five, 'normal', { cancelled: () => shown === 5, skipping: () => false }, () => { shown++; }, recorder().sleep);
+  assert.equal(res, 'cancelled');
 });
 
 test('instant shows only the last frame', async () => {

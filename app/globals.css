@@ -101,3 +101,44 @@ body {
 .dialog h2 { margin: 0 0 8px; font-size: 1.75rem; font-weight: 800; }
 .dialog p { margin: 0 0 18px; font-size: 1.1rem; }
 .dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+/* Move effects (SVG, drawn over the board) */
+.hole-btn[data-flash] { box-shadow: 0 0 0 5px var(--count), 0 0 0 8px var(--ink); }
+.fx-hop { animation: fx-hop 200ms ease-out forwards; }
+@keyframes fx-hop {
+  0% { transform: translate(var(--dx), var(--dy)); opacity: 1; }
+  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.5 - 22px)); }
+  85% { opacity: 1; }
+  100% { transform: translate(0, 0); opacity: 0; }
+}
+.fx-pulse { transform-box: fill-box; transform-origin: center; opacity: 0; animation: fx-pulse 420ms ease-out 2; }
+@keyframes fx-pulse {
+  0% { transform: scale(0.92); opacity: 1; }
+  100% { transform: scale(1.22); opacity: 0; }
+}
+.fx-fly { opacity: 0; animation: fx-fly 620ms ease-in forwards; }
+@keyframes fx-fly {
+  0% { transform: translate(var(--dx), var(--dy)); opacity: 1; }
+  45% { transform: translate(calc(var(--dx) * 0.55), calc(var(--dy) * 0.55 - 40px)); opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(0, 0); opacity: 0; }
+}
+.fx-cloud { animation: fx-cloud 1.2s linear forwards; }
+@keyframes fx-cloud {
+  0%, 85% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+.fx-cloud-pop { transform-box: fill-box; transform-origin: center; animation: fx-pop 260ms ease-out; }
+@keyframes fx-pop {
+  0% { transform: scale(0.5); }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-hop, .fx-fly, .fx-pulse { display: none; }
+  .fx-cloud-pop { animation: none; }
+  .fx-cloud { animation: fx-cloud-static 1.2s steps(1, end) forwards; }
+}
+@keyframes fx-cloud-static {
+  to { visibility: hidden; }
+}
