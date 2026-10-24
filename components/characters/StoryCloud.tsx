@@ -60,11 +60,17 @@ export default function StoryCloud({ anchor, mode, onClose }: { anchor: HTMLElem
     if (d && !d.open) d.showModal();
   }, [anchor]);
 
+  // A new width (rotation, window resize) closes the cloud. A height-only change is a
+  // phone's address bar sliding in or out, so the cloud stays and is placed again.
   useEffect(() => {
-    const close = () => ref.current?.close();
-    window.addEventListener('resize', close);
-    return () => window.removeEventListener('resize', close);
-  }, []);
+    const width = window.innerWidth;
+    const onResize = () => {
+      if (window.innerWidth !== width) ref.current?.close();
+      else setP(place(anchor));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [anchor]);
 
   // Move focus to the new view's first button, so Enter keeps paging.
   useEffect(() => {
