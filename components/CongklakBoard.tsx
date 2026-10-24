@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Board, Player, playCongklakMove, checkGameOver, collectRemaining, getWinner } from '../utils/gameLogic';
+import { Board, Player, playCongklakMove, checkGameOver, collectRemaining, getWinner } from '../utils/legacyGameLogic';
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 

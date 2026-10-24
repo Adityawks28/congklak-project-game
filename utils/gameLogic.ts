@@ -1,189 +1,132 @@
-// utils/gameLogic.ts
+// Congklak rules. Slots: A holes 0-6, A store 7, B holes 8-14, B store 15.
+// Sowing walks up the indexes (clockwise on the board) and skips the
+// opponent's store. The hole across from hole i is 14 - i.
 
 export type Player = 'A' | 'B';
+export type Mode = 'simple' | 'traditional';
 export type Board = number[];
 
-// --- NEW STRUCT: BUKU CATATAN SEJARAH ---
-export interface HistoryStep {
-    boardState: Board;      // Foto papan saat detik ini
-    activeHoleIndex: number | null; // Lubang mana yang sedang diisi/diambil (untuk efek lampu)
-    action: 'PICK' | 'DROP' | 'STOP' | 'CAPTURE'; // Lagi ngapain? (Optional, buat debugging)
-    hand: number;
+export const STORE: Record<Player, number> = { A: 7, B: 15 };
+export const HOLES: Record<Player, number[]> = {
+  A: [0, 1, 2, 3, 4, 5, 6],
+  B: [8, 9, 10, 11, 12, 13, 14],
+};
+export const SEEDS_PER_HOLE = 7;
+export const TOTAL = 98;
+
+export interface GameState {
+  board: Board;
+  burnt: boolean[];
+  turn: Player;
+  mode: Mode;
+  round: number;
+  phase: 'playing' | 'roundOver' | 'gameOver';
+  winner: Player | 'draw' | null;
 }
 
-export interface TurnResult {
-    updatedBoard: Board;
-    nextTurn: Player;
-    message: string;
-    history: HistoryStep[]; // <--- INI DATA ANIMASINYA
+export type FrameEvent = 'pick' | 'drop' | 'capture' | 'end';
+
+export interface Frame {
+  board: Board;
+  active: number | null;
+  hand: number;
+  event: FrameEvent;
+  capturedFrom?: number;
 }
 
-const HOUSE_A = 7;
-const HOUSE_B = 15;
+export type Outcome = 'extraTurn' | 'capture' | 'turnEnds';
 
-// ... (Helper isOwnHouse & isValidMove SAMA SEPERTI SEBELUMNYA, copy saja) ...
-const isOwnHouse = (index: number, player: Player): boolean => {
-    if (index === HOUSE_A && player === 'A') return true;
-    if (index === HOUSE_B && player === 'B') return true;
-    return false;
-};
+export interface MoveResult {
+  state: GameState;
+  frames: Frame[];
+  outcome: Outcome;
+  captured: number;
+  lastIndex: number;
+}
 
-const isValidMove = (index: number, player: Player, board: Board): boolean => {
-    if (board[index] === 0) return false;
-    if (player === 'A' && (index < 0 || index > 6)) return false;
-    if (player === 'B' && (index < 8 || index > 14)) return false;
-    return true;
-};
-// ... (End Helper) ...
+// ponytail: guard against an endless relay; never reached in 2000 random games.
+const MAX_DROPS = 5000;
 
-// --- GAME OVER DETECTION ---
-export const checkGameOver = (board: Board): boolean => {
-    const sideA = board.slice(0, 7).reduce((sum, v) => sum + v, 0);
-    const sideB = board.slice(8, 15).reduce((sum, v) => sum + v, 0);
-    return sideA === 0 || sideB === 0;
-};
+export const opponent = (p: Player): Player => (p === 'A' ? 'B' : 'A');
+export const owner = (slot: number): Player => (slot < 8 ? 'A' : 'B');
+export const sideTotal = (board: Board, p: Player): number =>
+  HOLES[p].reduce((n, i) => n + board[i], 0);
 
-export const collectRemaining = (board: Board): Board => {
-    const newBoard = [...board];
-    for (let i = 0; i <= 6; i++) {
-        newBoard[7] += newBoard[i];
-        newBoard[i] = 0;
+export function newGame(mode: Mode = 'simple'): GameState {
+  const board = Array(16).fill(SEEDS_PER_HOLE);
+  board[STORE.A] = 0;
+  board[STORE.B] = 0;
+  return { board, burnt: Array(16).fill(false), turn: 'A', mode, round: 1, phase: 'playing', winner: null };
+}
+
+export function legalMoves(s: GameState): number[] {
+  if (s.phase !== 'playing') return [];
+  return HOLES[s.turn].filter(i => s.board[i] > 0 && !s.burnt[i]);
+}
+
+export function applyMove(s: GameState, hole: number, opts: { record?: boolean } = {}): MoveResult {
+  if (!legalMoves(s).includes(hole)) throw new Error(`Illegal move: hole ${hole}`);
+  const record = opts.record ?? true;
+  const me = s.turn;
+  const board = [...s.board];
+  const frames: Frame[] = [];
+  const snap = (active: number | null, hand: number, event: FrameEvent, capturedFrom?: number) => {
+    if (!record) return;
+    const f: Frame = { board: [...board], active, hand, event };
+    if (capturedFrom !== undefined) f.capturedFrom = capturedFrom;
+    frames.push(f);
+  };
+
+  let hand = board[hole];
+  board[hole] = 0;
+  snap(hole, hand, 'pick');
+  let i = hole;
+  let drops = 0;
+  let outcome: Outcome = 'turnEnds';
+  let captured = 0;
+
+  for (;;) {
+    while (hand > 0) {
+      i = (i + 1) % 16;
+      if (i === STORE[opponent(me)] || s.burnt[i]) continue;
+      board[i]++;
+      hand--;
+      drops++;
+      snap(i, hand, 'drop');
     }
-    for (let i = 8; i <= 14; i++) {
-        newBoard[15] += newBoard[i];
-        newBoard[i] = 0;
+    if (i === STORE[me]) {
+      outcome = 'extraTurn';
+      break;
     }
-    return newBoard;
-};
-
-export const getWinner = (board: Board): Player | 'DRAW' => {
-    if (board[7] > board[15]) return 'A';
-    if (board[15] > board[7]) return 'B';
-    return 'DRAW';
-};
-
-// --- CORE LOGIC WITH RECORDING ---
-export const playCongklakMove = (
-    currentBoard: Board,
-    activePlayer: Player,
-    startIndex: number,
-): TurnResult => {
-    
-    // 1. Validasi
-    if (!isValidMove(startIndex, activePlayer, currentBoard)) {
-        throw new Error("Invalid move!");
+    if (board[i] > 1 && drops < MAX_DROPS) {
+      hand = board[i];
+      board[i] = 0;
+      snap(i, hand, 'pick');
+      continue;
     }
-
-    // 2. Setup
-    const newBoard = [...currentBoard];
-    // RECORDING START: Siapkan array kosong
-    const history: HistoryStep[] = [];
-
-    // Ambil biji pertama
-    let hand = newBoard[startIndex];
-    newBoard[startIndex] = 0;
-    
-    // SNAPSHOT 1: Biji diambil
-    history.push({
-        boardState: [...newBoard], // PENTING: Harus di-copy pakai spread operator [...]
-        activeHoleIndex: startIndex,
-        action: 'PICK',
-        hand: hand
-    });
-
-    let currentIndex = startIndex;
-    let turnActive = true;
-    let nextTurn: Player = activePlayer === 'A' ? 'B' : 'A';
-    let message = "";
-
-    // 3. The Loop
-    while (turnActive) {
-        // a. Loop Tebar Biji
-        while (hand > 0) {
-            currentIndex = (currentIndex + 1) % 16;
-
-            // Skip Lumbung Lawan
-            if (activePlayer === 'A' && currentIndex === 15) continue;
-            if (activePlayer === 'B' && currentIndex === 7) continue;
-
-            newBoard[currentIndex] += 1;
-            hand--;
-
-            // SNAPSHOT 2: Biji Jatuh (Setiap biji jatuh, kita rekam)
-            history.push({
-                boardState: [...newBoard], // Copy papan terbaru
-                activeHoleIndex: currentIndex, // Tandai lubang ini (biar nyala)
-                action: 'DROP',
-                hand: hand
-            });
-        }
-
-        // b. Cek Posisi Jatuh
-        if (isOwnHouse(currentIndex, activePlayer)) {
-            turnActive = false;
-            nextTurn = activePlayer; 
-            message = `Player ${activePlayer} main lagi (Lumbung)!`;
-            
-        } else if (newBoard[currentIndex] > 1) {
-            // ESTAFET: Ambil lagi
-            hand = newBoard[currentIndex];
-            newBoard[currentIndex] = 0;
-            
-            // SNAPSHOT 3: Biji Diambil lagi (Estafet)
-            history.push({
-                boardState: [...newBoard],
-                activeHoleIndex: currentIndex,
-                action: 'PICK',
-                hand: hand
-            });
-            // Loop lanjut karena turnActive masih true
-
-        } else {
-            // MATI / NEMBAK
-            turnActive = false;
-            nextTurn = activePlayer === 'A' ? 'B' : 'A';
-            message = `Giliran Player ${nextTurn}`;
-
-            // Logic Nembak
-            const isPlayerASide = currentIndex >= 0 && currentIndex <= 6;
-            const isPlayerBSide = currentIndex >= 8 && currentIndex <= 14;
-
-            if ((activePlayer === 'A' && isPlayerASide) || (activePlayer === 'B' && isPlayerBSide)) {
-                const opponentIndex = 14 - currentIndex;
-                const myHouse = activePlayer === 'A' ? HOUSE_A : HOUSE_B;
-
-                if (newBoard[opponentIndex] > 0) {
-                    // Ambil punya lawan + punya sendiri
-                    const captured = newBoard[opponentIndex] + newBoard[currentIndex];
-                    newBoard[myHouse] += captured;
-                    newBoard[opponentIndex] = 0;
-                    newBoard[currentIndex] = 0;
-                    message = "TEMBAK! Capture biji lawan!";
-
-                    // SNAPSHOT 4: Hasil Nembak
-                    history.push({
-                        boardState: [...newBoard],
-                        activeHoleIndex: myHouse, // Highlight lumbung yang dapet banyak
-                        action: 'CAPTURE',
-                        hand: 0
-                    });
-                }
-            }
-        }
+    const across = 14 - i;
+    if (owner(i) === me && board[i] === 1 && board[across] > 0) {
+      captured = board[i] + board[across];
+      board[STORE[me]] += captured;
+      board[i] = 0;
+      board[across] = 0;
+      outcome = 'capture';
+      snap(i, 0, 'capture', across);
     }
+    break;
+  }
 
-    // SNAPSHOT FINAL: Matikan highlight
-    history.push({
-        boardState: [...newBoard],
-        activeHoleIndex: null, // Lampu dimatikan
-        action: 'STOP',
-        hand: 0
-    });
-
-    return {
-        updatedBoard: newBoard,
-        nextTurn,
-        message,
-        history // Kembalikan rekaman video
-    };
-};
+  const state: GameState = { ...s, board, turn: outcome === 'extraTurn' ? me : opponent(me) };
+  if (sideTotal(board, 'A') === 0 || sideTotal(board, 'B') === 0) {
+    for (const p of ['A', 'B'] as const) {
+      for (const h of HOLES[p]) {
+        board[STORE[p]] += board[h];
+        board[h] = 0;
+      }
+    }
+    state.phase = 'gameOver';
+    state.winner = board[STORE.A] > board[STORE.B] ? 'A' : board[STORE.B] > board[STORE.A] ? 'B' : 'draw';
+    snap(null, 0, 'end');
+  }
+  return { state, frames, outcome, captured, lastIndex: i };
+}
