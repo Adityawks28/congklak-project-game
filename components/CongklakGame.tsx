@@ -46,7 +46,16 @@ export default function CongklakGame() {
       <p className="status" aria-live="polite">
         {game.status}
       </p>
-      <p className="hint">{preview?.text}</p>
+      {/* Skip lives here, not in the button row: this line is empty during a move, so nothing shifts. */}
+      <p className="hint">
+        {game.busy ? (
+          <button type="button" className="btn" onClick={game.skip}>
+            Skip
+          </button>
+        ) : (
+          preview?.text
+        )}
+      </p>
       <div className="scene">
         <PixelPerson sprite={MAN} className="char-man" label="Ask the man in the blangkon about congklak" onOpen={setAsking} />
         <Board
