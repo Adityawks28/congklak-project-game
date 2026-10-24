@@ -37,7 +37,6 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           REPO_NAME: ${{ github.event.repository.name }}
 
       - name: Upload artifact

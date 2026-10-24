@@ -27,3 +27,58 @@ body {
   outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
+
+.game {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+.game-head { text-align: center; }
+.game-head h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; line-height: 1; }
+.tagline { margin: 6px 0 0; font-weight: 500; }
+.status { margin: 0; min-height: 1.5em; font-size: 1.25rem; font-weight: 700; text-align: center; }
+
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--chip);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn:hover { background: var(--count); }
+.btn:active { transform: translateY(1px); }
+
+/* Board: the wide board by default, the tall one on portrait phones. The
+   tall board is sized by screen height so both stores stay in view. */
+.board { width: 100%; display: flex; justify-content: center; }
+.board-wide { width: min(100%, 960px, calc((100dvh - 9rem) * 1000 / 340)); min-width: min(100%, 640px); }
+.board-tall { display: none; width: clamp(210px, calc((100dvh - 9.5rem) * 0.34), min(100%, 340px)); }
+@media (max-width: 700px) and (orientation: portrait) {
+  .board-wide { display: none; }
+  .board-tall { display: block; }
+  .game { gap: 8px; padding: 12px 16px; }
+  .game-head h1 { font-size: 1.75rem; }
+  .tagline { font-size: 0.9rem; }
+  .status { font-size: 1.1rem; }
+}
+.board-art { position: relative; }
+.board-art svg { display: block; width: 100%; height: auto; }
+.board-legend { margin: 6px 0 0; font-size: 0.95rem; text-align: center; }
+
+.hole-btn, .store-slot { position: absolute; border-radius: 50%; }
+.hole-btn { border: 0; padding: 0; background: transparent; cursor: pointer; }
+.hole-btn[aria-disabled='true'] { cursor: default; }
+.board[data-busy] .hole-btn { pointer-events: none; }
+.board[data-busy] { cursor: pointer; }
+/* Playable holes: a cream ring with an ink edge reads on wood and rim alike. */
+.hole-btn[data-playable] { box-shadow: 0 0 0 3px var(--count), 0 0 0 5px var(--ink); }
+.hole-btn[data-playable]:hover { box-shadow: 0 0 0 5px var(--count), 0 0 0 7px var(--ink); }
+.hole-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 8px; }
+.hole-btn[data-active], .store-slot[data-active] { box-shadow: 0 0 0 5px var(--count), 0 0 0 8px var(--ink); }

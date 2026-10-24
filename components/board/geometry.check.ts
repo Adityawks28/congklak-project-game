@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BODY_STRETCH, COUNT_BOX, HOLE_R, RIM_OFFSET, STORE_MAX, STORE_RX, STORE_RY, TOP_BAND,
+  BODY_STRETCH, COUNT_BOX, COUNT_FONT, COUNT_METRICS, HOLE_R, RIM_OFFSET, STORE_MAX, STORE_RX, STORE_RY, TOP_BAND,
   countAnchor, marbleLayout, slotCenter, storePile, toTall,
 } from './geometry.ts';
 import type { Orientation, Point } from './geometry.ts';
@@ -93,6 +93,14 @@ test('store pile', () => {
     // the pile fills from the bottom: the first marble is the lowest
     const pile = storePile(STORE_MAX, o);
     assert.ok(pile.every(p => p.dy <= pile[0].dy));
+  }
+});
+
+test('the count box holds a two-digit count at its font size', () => {
+  for (const o of both) {
+    const f = COUNT_FONT[o];
+    assert.ok(COUNT_BOX[o].w >= COUNT_METRICS.width * f + COUNT_METRICS.outline, `${o} width`);
+    assert.ok(COUNT_BOX[o].h >= COUNT_METRICS.height * f + COUNT_METRICS.outline, `${o} height`);
   }
 });
 

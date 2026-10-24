@@ -18,14 +18,18 @@ export const MARBLE_STORE_R = 10.5;
 export const STORE_MAX = 30;
 export const TOP_BAND = 7;
 export const RIM_OFFSET: Record<Orientation, Point> = { wide: { x: 0, y: 2.5 }, tall: { x: 0, y: 2.5 } };
-export const COUNT_FONT: Record<Orientation, number> = { wide: 19, tall: 17 };
-// Box the painted count (two digits plus its outline) must fit in.
+// Count text size per board, chosen so counts render at about 15 px or more on
+// the smallest boards (768 px wide board, 360 px phone).
+export const COUNT_FONT: Record<Orientation, number> = { wide: 21, tall: 25 };
+// Measured in Chrome: Baloo 2 ExtraBold "88" is 1.12 em wide and its digits
+// 0.643 em tall; the count's outline adds 4 units. The box must hold that.
+export const COUNT_METRICS = { width: 1.12, height: 0.643, outline: 4 };
 export const COUNT_BOX: Record<Orientation, { w: number; h: number }> = {
   wide: { w: 28, h: 18 },
-  tall: { w: 24, h: 17 },
+  tall: { w: 32, h: 21 },
 };
-// The phone board is drawn 10% wider across so the counts fit beside the holes.
-export const BODY_STRETCH: Record<Orientation, number> = { wide: 1, tall: 1.1 };
+// The phone board is drawn 15% wider across so its larger counts fit beside the holes.
+export const BODY_STRETCH: Record<Orientation, number> = { wide: 1, tall: 1.15 };
 
 export const BOARD_PATH =
   'M 36 160 C 56 68 178 38 300 38 L 700 38 C 822 38 944 68 964 160 C 944 252 822 282 700 282 L 300 282 C 178 282 56 252 36 160 Z';
@@ -51,7 +55,7 @@ export function slotCenter(slot: number, o: Orientation): Point {
 export function countAnchor(slot: number, o: Orientation): Point {
   const c = slotCenter(slot, o);
   const a = owner(slot) === 'A';
-  return o === 'wide' ? { x: c.x, y: a ? 263 : 62 } : { x: a ? 268 : 57, y: c.y };
+  return o === 'wide' ? { x: c.x, y: a ? 263 : 62 } : { x: a ? 271 : 54, y: c.y };
 }
 
 // Countable patterns: dice shapes up to 6, a flower for 7 (the starting
