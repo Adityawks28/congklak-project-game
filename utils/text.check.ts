@@ -1,7 +1,9 @@
 // UI text check: run with `node utils/text.check.ts`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { holeLabel, storeLabel } from './text.ts';
+import { holeLabel, outcomeStatus, storeLabel, turnStatus } from './text.ts';
+import { applyMove, newGame } from './gameLogic.ts';
+import type { GameState } from './gameLogic.ts';
 
 const vsCpu = { names: { A: 'You', B: 'Computer' }, vsComputer: true };
 const friends = { names: { A: 'Sari', B: 'Budi' }, vsComputer: false };
@@ -28,4 +30,49 @@ test('no em dash in generated text', () => {
     all.push(storeLabel('A', 3, o), storeLabel('B', 0, o));
   }
   assert.ok(!/\u2014/.test(all.join('\n')));
+});
+
+test('turn status', () => {
+  assert.match(turnStatus(newGame(), vsCpu.names, true), /Your turn/);
+  assert.match(turnStatus({ ...newGame(), turn: 'B' }, vsCpu.names, true), /Computer/);
+  assert.equal(turnStatus(newGame(), friends.names, false), "Sari's turn.");
+});
+
+test('game over status gives the score', () => {
+  const over: GameState = { ...newGame(), phase: 'gameOver', winner: 'A', board: [0, 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 46] };
+  const t = turnStatus(over, vsCpu.names, true);
+  assert.match(t, /You win/);
+  assert.match(t, /52/);
+  assert.match(t, /46/);
+  assert.match(turnStatus({ ...over, winner: 'B', board: [0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 58] }, friends.names, false), /Budi wins, 58 to 40/);
+  assert.match(turnStatus({ ...over, winner: 'draw', board: [0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 49] }, friends.names, false), /draw/);
+});
+
+test('outcome status', () => {
+  const extra = applyMove(newGame(), 0);
+  assert.match(outcomeStatus(extra, 'A', vsCpu.names, true), /go again/);
+  const b = Array(16).fill(0); b[2] = 1; b[11] = 9; b[9] = 1; b[6] = 1;
+  const cap = applyMove({ ...newGame(), board: b }, 2);
+  assert.equal(cap.captured, 10);
+  assert.match(outcomeStatus(cap, 'A', vsCpu.names, true), /captured 10 marbles/);
+  assert.match(outcomeStatus(cap, 'A', friends.names, false), /^Sari captured 10 marbles/);
+  const plain = applyMove({ ...newGame(), board: [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0] }, 2);
+  assert.equal(plain.outcome, 'turnEnds');
+  assert.equal(outcomeStatus(plain, 'A', vsCpu.names, true), '');
+});
+
+test('a store landing that ends the game does not say go again', () => {
+  const b = Array(16).fill(0); b[6] = 1; b[7] = 50; b[8] = 47;
+  const r = applyMove({ ...newGame(), board: b }, 6);
+  assert.equal(r.outcome, 'extraTurn');
+  assert.equal(r.state.phase, 'gameOver');
+  assert.equal(outcomeStatus(r, 'A', vsCpu.names, true), '');
+});
+
+test('status text has no em dash', () => {
+  const all = [
+    turnStatus(newGame(), vsCpu.names, true), turnStatus({ ...newGame(), turn: 'B' }, friends.names, false),
+    outcomeStatus(applyMove(newGame(), 0), 'A', friends.names, false),
+  ].join('\n');
+  assert.ok(!/\u2014/.test(all));
 });
