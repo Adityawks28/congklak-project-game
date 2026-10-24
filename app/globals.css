@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+:root {
+  --ink: #2a130a;
+  --paper: #f1e4cc;
+  --wood-top: #c47a48;
+  --wood: #9a5530;
+  --wood-side: #5e2e16;
+  --rim: #d99060;
+  --hole: #3a1a0c;
+  --hole-shade: #1f0d05;
+  --carve: #5e2e16;
+  --marble: #2f9e4a;
+  --marble-light: #8fe49a;
+  --marble-line: #0f3a1a;
+  --count: #fff4dc;
+  --chip: #f7e6c4;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-baloo), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
