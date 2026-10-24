@@ -7,6 +7,7 @@ import { man, woman } from './characters/pixel';
 import ControlBar from './ControlBar';
 import GameOverDialog from './GameOverDialog';
 import MoveEffects from './board/MoveEffects';
+import PaperDecor, { TitleSprig } from './PaperDecor';
 import { useGame } from '@/hooks/useGame';
 import { STORE, startNextRound } from '@/utils/gameLogic';
 import type { GameState } from '@/utils/gameLogic';
@@ -37,9 +38,15 @@ export default function CongklakGame() {
   const upcoming = roundOver ? startNextRound(state) : null;
 
   return (
+    <>
+    <PaperDecor />
     <div className="game">
       <header className="game-head">
-        <h1>Congklak</h1>
+        <h1>
+          <TitleSprig side="left" />
+          Congklak
+          <TitleSprig side="right" />
+        </h1>
         <p className="tagline">The Indonesian game of holes and marbles. Play a friend or the computer.</p>
       </header>
       <ControlBar game={game} />
@@ -96,5 +103,6 @@ export default function CongklakGame() {
         onClose={() => setDismissed(state)}
       />
     </div>
+    </>
   );
 }
