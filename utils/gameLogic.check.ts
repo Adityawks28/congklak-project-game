@@ -1,7 +1,7 @@
 // Rules check: run with `node utils/gameLogic.check.ts` (Node strips the types).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMove, legalMoves, newGame, TOTAL } from './gameLogic.ts';
+import { applyMove, legalMoves, newGame, startNextRound, TOTAL } from './gameLogic.ts';
 import type { GameState } from './gameLogic.ts';
 
 export function mulberry32(seed: number): () => number {
@@ -135,4 +135,77 @@ test('applyMove does not mutate its input', () => {
   const before = structuredClone(s);
   applyMove(s, legalMoves(s)[0]);
   assert.deepEqual(s, before);
+});
+
+test('traditional round end', () => {
+  // A plays hole 5: one marble into empty hole 6, capturing B's last marble across
+  const s: GameState = { ...newGame('traditional'), board: [3, 0, 0, 0, 0, 1, 0, 50, 1, 0, 0, 0, 0, 0, 0, 43] };
+  const r = applyMove(s, 5);
+  assert.equal(r.outcome, 'capture');
+  assert.equal(r.state.phase, 'roundOver');
+  assert.equal(r.state.winner, null);
+  assert.deepEqual([...r.state.board.slice(0, 7), ...r.state.board.slice(8, 15)], Array(14).fill(0));
+  assert.equal(r.state.board[7], 55);
+  assert.equal(sum(r.state.board), TOTAL);
+});
+
+test('refill and burn', () => {
+  const s = { ...newGame('traditional'), board: [0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 38], phase: 'roundOver' as const };
+  const n = startNextRound(s);
+  assert.deepEqual(n.board, [7, 7, 7, 7, 7, 7, 7, 11, 0, 0, 7, 7, 7, 7, 7, 3]);
+  assert.deepEqual(n.burnt.slice(8, 15), [true, true, false, false, false, false, false]);
+  assert.deepEqual(n.burnt.slice(0, 7), Array(7).fill(false));
+  assert.equal(n.turn, 'B');
+  assert.equal(n.round, 2);
+  assert.equal(n.phase, 'playing');
+});
+
+test('cannot fill a hole: game over', () => {
+  const s = { ...newGame('traditional'), board: [0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 0, 0, 5], phase: 'roundOver' as const };
+  const n = startNextRound(s);
+  assert.equal(n.phase, 'gameOver');
+  assert.equal(n.winner, 'A');
+  assert.equal(n.board[7], 93);
+  assert.equal(n.board[15], 5);
+});
+
+test('startNextRound needs a finished round', () => {
+  assert.throws(() => startNextRound(newGame('traditional')));
+});
+
+test('burnt holes are skipped and never legal', () => {
+  const burnt = Array(16).fill(false);
+  burnt[8] = burnt[9] = true;
+  const s: GameState = { ...newGame('traditional'), burnt, board: [1, 0, 0, 0, 0, 0, 4, 40, 0, 0, 0, 0, 0, 2, 0, 51] };
+  const r = applyMove(s, 6);
+  assert.deepEqual(r.state.board.slice(7, 13), [41, 0, 0, 1, 1, 1]);
+  assert.equal(r.lastIndex, 12);
+  assert.ok(!legalMoves({ ...r.state, board: r.state.board.map((v, i) => (i === 9 ? 3 : v)) }).includes(9));
+});
+
+test('no capture from a burnt hole across', () => {
+  const burnt = Array(16).fill(false);
+  burnt[11] = true; // across from hole 3
+  const s: GameState = { ...newGame('traditional'), burnt, board: [0, 0, 1, 0, 0, 0, 1, 40, 2, 0, 0, 0, 0, 0, 0, 54] };
+  assert.equal(applyMove(s, 2).outcome, 'turnEnds');
+});
+
+test('98 marbles across rounds', () => {
+  let rounds = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const rng = mulberry32(seed);
+    let s = newGame('traditional');
+    for (let step = 0; step < 5000 && s.phase !== 'gameOver'; step++) {
+      if (s.phase === 'roundOver') {
+        s = startNextRound(s);
+        rounds++;
+      } else {
+        const moves = legalMoves(s);
+        s = applyMove(s, moves[Math.floor(rng() * moves.length)], { record: false }).state;
+      }
+      assert.equal(sum(s.board), TOTAL, `seed ${seed} step ${step}`);
+      for (let i = 0; i < 16; i++) if (s.burnt[i]) assert.equal(s.board[i], 0);
+    }
+  }
+  assert.ok(rounds > 300, `only ${rounds} round changes`);
 });

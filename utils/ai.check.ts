@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chooseMove } from './ai.ts';
-import { applyMove, legalMoves, newGame } from './gameLogic.ts';
+import { applyMove, legalMoves, newGame, startNextRound } from './gameLogic.ts';
 import type { GameState, Player } from './gameLogic.ts';
 import type { Level } from './settings.ts';
 
@@ -28,6 +28,25 @@ test('always legal', () => {
     for (const level of levels) assert.ok(legalMoves(s).includes(chooseMove(s, level, rng)), `${level} on ${s.board} (${s.turn})`);
     checked++;
   }
+});
+
+test('always legal with burnt holes (traditional rounds)', () => {
+  const rng = mulberry32(11);
+  let checked = 0, withBurnt = 0;
+  for (let g = 0; g < 60; g++) {
+    let s = newGame('traditional');
+    for (let step = 0; step < 3000 && s.phase !== 'gameOver'; step++) {
+      if (s.phase === 'roundOver') { s = startNextRound(s); continue; }
+      if (s.burnt.some(Boolean)) {
+        withBurnt++;
+        for (const level of levels) assert.ok(legalMoves(s).includes(chooseMove(s, level, rng)), `${level} on ${s.board}`);
+        checked++;
+      }
+      s = applyMove(s, chooseMove(s, 'easy', rng), { record: false }).state;
+      if (checked > 300) break;
+    }
+  }
+  assert.ok(withBurnt > 100, `only ${withBurnt} positions had burnt holes`);
 });
 
 test('medium takes the extra turn over nothing', () => {

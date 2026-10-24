@@ -1,8 +1,8 @@
 // UI text check: run with `node utils/text.check.ts`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { holeLabel, matchStatus, outcomeStatus, previewText, storeLabel, turnStatus } from './text.ts';
-import { applyMove, newGame } from './gameLogic.ts';
+import { holeLabel, matchStatus, outcomeStatus, previewText, roundSummary, storeLabel, turnStatus } from './text.ts';
+import { applyMove, newGame, startNextRound } from './gameLogic.ts';
 import type { GameState } from './gameLogic.ts';
 
 const vsCpu = { names: { A: 'You', B: 'Computer' }, vsComputer: true };
@@ -36,6 +36,7 @@ test('turn status', () => {
   assert.match(turnStatus(newGame(), vsCpu.names, true), /Your turn/);
   assert.match(turnStatus({ ...newGame(), turn: 'B' }, vsCpu.names, true), /Computer/);
   assert.equal(turnStatus(newGame(), friends.names, false), "Sari's turn.");
+  assert.equal(turnStatus({ ...newGame('traditional'), phase: 'roundOver', round: 2 }, friends.names, false), 'Round 2 is over.');
 });
 
 test('game over status gives the score', () => {
@@ -83,6 +84,19 @@ test('match status names the winner at 2 wins', () => {
   assert.equal(matchStatus({ A: 2, B: 1 }, vsCpu.names, true), 'You win the match, 2 to 1!');
   assert.equal(matchStatus({ A: 0, B: 2 }, vsCpu.names, true), 'The computer wins the match, 2 to 0.');
   assert.equal(matchStatus({ A: 1, B: 2 }, friends.names, false), 'Budi wins the match, 2 to 1!');
+});
+
+test('round summary', () => {
+  const over = { ...newGame('traditional'), board: [0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 38], phase: 'roundOver' as const };
+  const t = roundSummary(over, startNextRound(over), vsCpu.names, true);
+  assert.match(t, /^Round 1 is over: You 60, Computer 38\./);
+  assert.match(t, /2 holes on the computer's side are burnt\./);
+  assert.match(t, /The computer starts round 2\./);
+  assert.ok(!/\u2014/.test(t));
+  const end = { ...over, round: 3, board: [0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 0, 0, 5] };
+  assert.equal(roundSummary(end, startNextRound(end), friends.names, false), 'Round 3 is over: Sari 93, Budi 5. Budi cannot fill a single hole, so the game is over.');
+  const mine = { ...over, board: [0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 63] };
+  assert.match(roundSummary(mine, startNextRound(mine), vsCpu.names, true), /2 holes on your side are burnt\. You start round 2\./);
 });
 
 test('status text has no em dash', () => {

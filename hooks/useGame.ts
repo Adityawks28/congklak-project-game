@@ -3,7 +3,7 @@
 // a run id; a playback whose id is stale stops and never writes state.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { chooseMove } from '@/utils/ai';
-import { applyMove, legalMoves, newGame as freshState } from '@/utils/gameLogic';
+import { applyMove, legalMoves, newGame as freshState, startNextRound } from '@/utils/gameLogic';
 import type { Board, Frame, FrameEvent, GameState, MoveResult, Player } from '@/utils/gameLogic';
 import { frameDelay, playFrames } from '@/utils/playback';
 import { playSound, primeSound, setSoundEnabled } from '@/utils/sound';
@@ -98,6 +98,19 @@ export function useGame(): Game {
     };
   }, []);
 
+  const recordEnd = useCallback(
+    (winner: Player | 'draw') => {
+      playSound('win');
+      setTally(t => {
+        const next = winner === 'draw' ? { ...t, draws: t.draws + 1 } : { ...t, [winner]: t[winner] + 1 };
+        save(TALLY_KEY, next);
+        return next;
+      });
+      if (bestOf3 && winner !== 'draw') setMatch(m => ({ ...m, [winner]: m[winner] + 1 }));
+    },
+    [bestOf3],
+  );
+
   const move = useCallback(
     (slot: number) => {
       if (busy || !legalMoves(state).includes(slot)) return;
@@ -127,22 +140,15 @@ export function useGame(): Game {
         if (res === 'cancelled' || run.current !== id) return;
         showCapture();
         const { phase, winner } = result.state;
-        if (phase === 'gameOver' && winner) {
-          playSound('win');
-          setTally(t => {
-            const next = winner === 'draw' ? { ...t, draws: t.draws + 1 } : { ...t, [winner]: t[winner] + 1 };
-            save(TALLY_KEY, next);
-            return next;
-          });
-          if (bestOf3 && winner !== 'draw') setMatch(m => ({ ...m, [winner]: m[winner] + 1 }));
-        } else if (result.outcome === 'extraTurn') playSound('extra');
+        if (phase === 'gameOver' && winner) recordEnd(winner);
+        else if (result.outcome === 'extraTurn') playSound('extra');
         setState(result.state);
         setView(idle(result.state.board));
         setLastMove({ result, mover });
         setBusy(false);
       });
     },
-    [busy, state, settings.speed, bestOf3],
+    [busy, state, settings.speed, recordEnd],
   );
 
   // The computer waits half a second, then moves. Any reset bumps the run id,
@@ -201,6 +207,16 @@ export function useGame(): Game {
     setNotice(opponentChanged ? `New game ${who}.` : `New game with ${next.mode} rules.`);
   };
 
+  // Traditional: refill and start the next round, or end the game if someone cannot.
+  const nextRound = () => {
+    if (state.phase !== 'roundOver') return;
+    const next = startNextRound(state);
+    setHistory([]);
+    reset(next);
+    if (next.phase === 'gameOver' && next.winner) recordEnd(next.winner);
+    else setNotice(`Round ${next.round} begins.`);
+  };
+
   const previewOf = (slot: number) => {
     if (!settings.preview || !playable.includes(slot)) return null;
     const r = applyMove(state, slot); // recorded: the hint needs the frames to spot a relay
@@ -239,7 +255,7 @@ export function useGame(): Game {
     newGame,
     undo,
     canUndo,
-    nextRound: () => {},
+    nextRound,
     tally,
     match: bestOf3 ? match : null,
     previewOf,

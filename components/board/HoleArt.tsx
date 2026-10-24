@@ -21,10 +21,21 @@ export function Marble({ x, y, r }: { x: number; y: number; r: number }) {
   );
 }
 
-export const Hole = memo(function Hole({ slot, o, n }: { slot: number; o: Orientation; n: number }) {
+export const Hole = memo(function Hole({ slot, o, n, burnt }: { slot: number; o: Orientation; n: number; burnt: boolean }) {
   const { x, y } = slotCenter(slot, o);
   const c = countAnchor(slot, o);
   const R = HOLE_R;
+  if (burnt) {
+    // Traditional rules: a hole nobody could refill, sealed and cracked for the round.
+    const crack = `M ${x - 22} ${y - 12} L ${x - 7} ${y - 1} L ${x - 13} ${y + 8} L ${x + 2} ${y + 20} M ${x - 7} ${y - 1} L ${x + 9} ${y - 9} L ${x + 22} ${y + 3}`;
+    return (
+      <g>
+        <circle cx={x} cy={y + 2.5} r={R + 3} fill="var(--rim)" opacity={0.75} />
+        <circle cx={x} cy={y} r={R} fill="var(--hole-shade)" stroke="var(--ink)" strokeWidth={3.5} />
+        <path d={crack} fill="none" stroke="var(--rim)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    );
+  }
   return (
     <g>
       <circle cx={x} cy={y + 2.5} r={R + 3} fill="var(--rim)" opacity={0.75} />

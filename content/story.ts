@@ -13,7 +13,13 @@ export const RULES: Panel[] = [
   { text: 'The game ends as soon as one side has no marbles left. Each player then adds the marbles still on their side to their own store. Most marbles wins.' },
 ];
 
-export const TRADITIONAL_RULES: Panel[] = [];
+export const TRADITIONAL_RULES: Panel[] = [
+  { text: 'Traditional congklak is played in rounds. Each move works as in the simple rules: sow clockwise, go again from your store, keep going from a full hole, capture from an empty hole on your side.' },
+  { text: 'A round ends as soon as either side\u2019s holes are empty. Each player then adds the marbles left on their side to their own store.' },
+  { text: 'For the next round, each player refills their holes with 7 marbles from their store, starting next to the store. Leftover marbles stay in the store.' },
+  { text: 'Holes you cannot fill are burnt: sealed for the whole round, and both players skip them when sowing. The player with fewer marbles in store starts the round.' },
+  { text: 'The game ends when a player cannot fill even one hole. The other player wins.' },
+];
 
 export const HISTORY: Panel[] = [
   { text: 'Congklak belongs to the mancala family: “sowing” games where seeds are moved around rows of holes, a few at a time.' },

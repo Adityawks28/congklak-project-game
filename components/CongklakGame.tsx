@@ -8,10 +8,10 @@ import ControlBar from './ControlBar';
 import GameOverDialog from './GameOverDialog';
 import MoveEffects from './board/MoveEffects';
 import { useGame } from '@/hooks/useGame';
-import { STORE } from '@/utils/gameLogic';
+import { STORE, startNextRound } from '@/utils/gameLogic';
 import type { GameState } from '@/utils/gameLogic';
 import { displayNames } from '@/utils/settings';
-import { matchStatus } from '@/utils/text';
+import { matchStatus, roundSummary } from '@/utils/text';
 
 const MAN = man();
 const WOMAN = woman();
@@ -33,6 +33,8 @@ export default function CongklakGame() {
   const score = `Final score: ${names.A} ${state.board[STORE.A]}, ${names.B} ${state.board[STORE.B]}.`;
   const matchText = game.match ? matchStatus(game.match, names, vsComputer) : '';
   const { tally, match } = game;
+  const roundOver = state.phase === 'roundOver';
+  const upcoming = roundOver ? startNextRound(state) : null;
 
   return (
     <div className="game">
@@ -74,6 +76,14 @@ export default function CongklakGame() {
         title={title}
         text={matchText ? `${score} ${matchText}` : score}
         onPlayAgain={game.newGame}
+        onClose={() => setDismissed(state)}
+      />
+      <GameOverDialog
+        open={roundOver && dismissed !== state}
+        title={`Round ${state.round} is over`}
+        text={upcoming ? roundSummary(state, upcoming, names, vsComputer) : ''}
+        actionLabel={upcoming?.phase === 'gameOver' ? 'See the result' : `Start round ${state.round + 1}`}
+        onPlayAgain={game.nextRound}
         onClose={() => setDismissed(state)}
       />
     </div>

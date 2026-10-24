@@ -64,7 +64,7 @@ function BoardView({ o, p }: { o: Orientation; p: BoardProps }) {
           <Body o={o} />
           <Store slot={STORE.A} o={o} n={p.board[STORE.A]} />
           <Store slot={STORE.B} o={o} n={p.board[STORE.B]} />
-          {HOLE_SLOTS.map(slot => <Hole key={slot} slot={slot} o={o} n={p.board[slot]} />)}
+          {HOLE_SLOTS.map(slot => <Hole key={slot} slot={slot} o={o} n={p.board[slot]} burnt={p.burnt[slot]} />)}
           {p.overlay?.(o)}
         </svg>
         {READING_ORDER[o].map(slot => (

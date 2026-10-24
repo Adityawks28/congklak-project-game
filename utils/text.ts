@@ -1,5 +1,5 @@
 // Every sentence the game shows or announces lives here, so it can be checked.
-import { STORE, owner } from './gameLogic.ts';
+import { HOLES, STORE, opponent, owner } from './gameLogic.ts';
 import type { GameState, MoveResult, Player } from './gameLogic.ts';
 
 type Who = { names: Record<Player, string>; vsComputer: boolean };
@@ -29,6 +29,7 @@ export function turnStatus(s: GameState, names: Record<Player, string>, vsComput
     if (vsComputer) return win === 'A' ? `You win, ${hi} to ${lo}!` : `The computer wins, ${hi} to ${lo}.`;
     return `${names[win]} wins, ${hi} to ${lo}!`;
   }
+  if (s.phase === 'roundOver') return `Round ${s.round} is over.`;
   if (vsComputer) return s.turn === 'A' ? 'Your turn.' : "Computer's turn.";
   return `${possessive(s.turn, w)} turn.`;
 }
@@ -65,4 +66,23 @@ export function matchStatus(m: Record<Player, number>, names: Record<Player, str
   const score = `${m[win]} to ${m[win === 'A' ? 'B' : 'A']}`;
   if (vsComputer) return win === 'A' ? `You win the match, ${score}!` : `The computer wins the match, ${score}.`;
   return `${names[win]} wins the match, ${score}!`;
+}
+
+// Traditional: what the round's end means, for the round dialog.
+export function roundSummary(prev: GameState, next: GameState, names: Record<Player, string>, vsComputer: boolean): string {
+  const w = { names, vsComputer };
+  const parts = [`Round ${prev.round} is over: ${names.A} ${prev.board[STORE.A]}, ${names.B} ${prev.board[STORE.B]}.`];
+  if (next.phase === 'gameOver') {
+    const loser = opponent(next.winner === 'B' ? 'B' : 'A');
+    parts.push(`${subject(loser, w)} cannot fill a single hole, so the game is over.`);
+    return parts.join(' ');
+  }
+  for (const p of ['A', 'B'] as const) {
+    const n = HOLES[p].filter(h => next.burnt[h]).length;
+    const side = vsComputer ? (p === 'A' ? 'your' : "the computer's") : `${names[p]}'s`;
+    if (n) parts.push(`${n === 1 ? '1 hole' : `${n} holes`} on ${side} side ${n === 1 ? 'is' : 'are'} burnt.`);
+  }
+  const starts = vsComputer && next.turn === 'A' ? 'start' : 'starts';
+  parts.push(`${subject(next.turn, w)} ${starts} round ${next.round}.`);
+  return parts.join(' ');
 }

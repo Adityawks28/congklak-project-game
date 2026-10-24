@@ -16,6 +16,11 @@ export default function ControlBar({ game }: { game: Game }) {
         <button type="button" className="btn" onClick={game.newGame}>
           New game
         </button>
+        {game.state.phase === 'roundOver' && (
+          <button type="button" className="btn btn-primary" onClick={game.nextRound}>
+            Start round {game.state.round + 1}
+          </button>
+        )}
         {vsComputer && (
           <button type="button" className="btn" aria-disabled={!game.canUndo} onClick={game.undo}>
             Undo
@@ -52,6 +57,7 @@ export default function ControlBar({ game }: { game: Game }) {
             Rules
             <select value={s.mode} onChange={e => set({ mode: e.target.value as Mode })}>
               <option value="simple">Simple</option>
+              <option value="traditional">Traditional (rounds)</option>
             </select>
           </label>
           <label className="check">

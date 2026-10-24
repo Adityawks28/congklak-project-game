@@ -51,9 +51,9 @@ test('pupil offsets', () => {
 
 test('story text', () => {
   assert.ok(RULES.length >= 4 && RULES.length <= 5);
-  assert.equal(TRADITIONAL_RULES.length, 0);
+  assert.ok(TRADITIONAL_RULES.length >= 4 && TRADITIONAL_RULES.length <= 5);
   assert.ok(HISTORY.length >= 3);
-  for (const p of [...RULES, ...HISTORY]) {
+  for (const p of [...RULES, ...TRADITIONAL_RULES, ...HISTORY]) {
     assert.ok(!/—/.test(p.text), p.text);
     const words = p.text.split(/\s+/).filter(Boolean).length;
     assert.ok(words <= 45, `${words} words: ${p.text}`);

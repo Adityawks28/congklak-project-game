@@ -1,6 +1,7 @@
 // Congklak rules. Slots: A holes 0-6, A store 7, B holes 8-14, B store 15.
 // Sowing walks up the indexes (clockwise on the board) and skips the
 // opponent's store. The hole across from hole i is 14 - i.
+// Traditional mode plays rounds: burnt holes stay empty and are skipped.
 
 export type Player = 'A' | 'B';
 export type Mode = 'simple' | 'traditional';
@@ -124,9 +125,34 @@ export function applyMove(s: GameState, hole: number, opts: { record?: boolean }
         board[h] = 0;
       }
     }
-    state.phase = 'gameOver';
-    state.winner = board[STORE.A] > board[STORE.B] ? 'A' : board[STORE.B] > board[STORE.A] ? 'B' : 'draw';
+    if (s.mode === 'traditional') state.phase = 'roundOver';
+    else {
+      state.phase = 'gameOver';
+      state.winner = board[STORE.A] > board[STORE.B] ? 'A' : board[STORE.B] > board[STORE.A] ? 'B' : 'draw';
+    }
     snap(null, 0, 'end');
   }
   return { state, frames, outcome, captured, lastIndex: i };
+}
+
+// Traditional: each player refills their holes with 7 from their store,
+// starting next to the store; holes they cannot fill are burnt this round.
+// Whoever has fewer in store starts (tie: A). Filling no hole ends the game.
+export function startNextRound(s: GameState): GameState {
+  if (s.phase !== 'roundOver') throw new Error('No finished round to start from');
+  const board = [...s.board];
+  const burnt = Array(16).fill(false);
+  const turn: Player = board[STORE.B] < board[STORE.A] ? 'B' : 'A';
+  for (const p of ['A', 'B'] as const) {
+    let filled = 0;
+    for (const h of [...HOLES[p]].reverse()) {
+      if (board[STORE[p]] >= SEEDS_PER_HOLE) {
+        board[STORE[p]] -= SEEDS_PER_HOLE;
+        board[h] = SEEDS_PER_HOLE;
+        filled++;
+      } else burnt[h] = true;
+    }
+    if (filled === 0) return { ...s, phase: 'gameOver', winner: opponent(p) };
+  }
+  return { ...s, board, burnt, turn, round: s.round + 1, phase: 'playing', winner: null };
 }
