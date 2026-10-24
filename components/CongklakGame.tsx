@@ -4,7 +4,7 @@ import Board from './board/Board';
 import GameOverDialog from './GameOverDialog';
 import MoveEffects from './board/MoveEffects';
 import { useGame } from '@/hooks/useGame';
-import { STORE, legalMoves } from '@/utils/gameLogic';
+import { STORE } from '@/utils/gameLogic';
 import type { GameState } from '@/utils/gameLogic';
 import { displayNames } from '@/utils/settings';
 
@@ -33,7 +33,7 @@ export default function CongklakGame() {
       <Board
         board={game.view.board}
         burnt={state.burnt}
-        playable={game.busy ? [] : legalMoves(state)}
+        playable={game.playable}
         active={game.view.active}
         flash={game.view.flash}
         preview={null}
@@ -49,6 +49,11 @@ export default function CongklakGame() {
         <button type="button" className="btn" onClick={game.newGame}>
           New game
         </button>
+        {vsComputer && (
+          <button type="button" className="btn" aria-disabled={!game.canUndo} onClick={game.undo}>
+            Undo
+          </button>
+        )}
         <button type="button" className="btn" style={{ visibility: game.busy ? 'visible' : 'hidden' }} onClick={game.skip}>
           Skip
         </button>

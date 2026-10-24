@@ -22,7 +22,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  opponent: 'human',
+  opponent: 'medium',
   speed: 'normal',
   mode: 'simple',
   sound: true,

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "node utils/gameLogic.check.ts && node components/board/geometry.check.ts && node utils/text.check.ts && node utils/playback.check.ts"
+    "check": "node utils/gameLogic.check.ts && node components/board/geometry.check.ts && node utils/text.check.ts && node utils/playback.check.ts && node utils/ai.check.ts"
   },
   "dependencies": {
     "next": "^16.4.3",

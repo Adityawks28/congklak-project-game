@@ -2,6 +2,7 @@
 // Owns the game: state, the move animation, and settings. Every reset bumps
 // a run id; a playback whose id is stale stops and never writes state.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { chooseMove } from '@/utils/ai';
 import { applyMove, legalMoves, newGame as freshState } from '@/utils/gameLogic';
 import type { Board, Frame, FrameEvent, GameState, MoveResult, Player } from '@/utils/gameLogic';
 import { frameDelay, playFrames } from '@/utils/playback';
@@ -26,6 +27,7 @@ export interface Game {
   state: GameState;
   view: View;
   busy: boolean;
+  playable: number[]; // holes the person may pick right now
   status: string;
   settings: Settings;
   updateSettings(p: Partial<Settings>): void;
@@ -60,13 +62,17 @@ export function useGame(): Game {
   const [capture, setCapture] = useState<View['capture']>(null);
   const [busy, setBusy] = useState(false);
   const [lastMove, setLastMove] = useState<{ result: MoveResult; mover: Player } | null>(null);
+  const [history, setHistory] = useState<GameState[]>([]); // states before each of your moves, for Undo
   const run = useRef(0);
   const skipping = useRef(false);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
 
   const names = displayNames(settings);
-  const vsComputer = settings.opponent !== 'human';
+  const level = settings.opponent === 'human' ? null : settings.opponent;
+  const vsComputer = level !== null;
+  const computerTurn = vsComputer && state.turn === 'B' && state.phase === 'playing';
+  const playable = busy || computerTurn ? [] : legalMoves(state);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -79,7 +85,7 @@ export function useGame(): Game {
     };
   }, []);
 
-  const play = useCallback(
+  const move = useCallback(
     (slot: number) => {
       if (busy || !legalMoves(state).includes(slot)) return;
       const mover = state.turn;
@@ -117,19 +123,47 @@ export function useGame(): Game {
     [busy, state, settings.speed],
   );
 
-  const newGame = useCallback(() => {
+  // The computer waits half a second, then moves. Any reset bumps the run id,
+  // and a change of state or opponent clears the timer, so a stale move never lands.
+  useEffect(() => {
+    if (!level || !computerTurn || busy) return;
+    const id = run.current;
+    const t = setTimeout(() => {
+      if (run.current === id) move(chooseMove(state, level));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [level, computerTurn, busy, state, move]);
+
+  const play = (slot: number) => {
+    if (!playable.includes(slot)) return;
+    if (vsComputer) setHistory(h => [...h, state]);
+    move(slot);
+  };
+
+  const reset = (to: GameState) => {
     run.current++;
-    const fresh = freshState(settings.mode);
-    setState(fresh);
-    setView(idle(fresh.board));
+    setState(to);
+    setView(idle(to.board));
     setCapture(null);
     setLastMove(null);
     setBusy(false);
-  }, [settings.mode]);
+  };
+
+  const newGame = () => {
+    setHistory([]);
+    reset(freshState(settings.mode));
+  };
+
+  const canUndo = vsComputer && history.length > 0 && state.phase !== 'gameOver';
+  const undo = () => {
+    if (!canUndo) return;
+    setHistory(history.slice(0, -1));
+    reset(history[history.length - 1]);
+  };
 
   const turnText = turnStatus(state, names, vsComputer);
   let status = turnText;
-  if (!busy && lastMove) {
+  if (lastMove) {
     const out = outcomeStatus(lastMove.result, lastMove.mover, names, vsComputer);
     const extraOnly = lastMove.result.outcome === 'extraTurn' && state.phase === 'playing';
     status = extraOnly ? out : [out, turnText].filter(Boolean).join(' ');
@@ -139,6 +173,7 @@ export function useGame(): Game {
     state,
     view: { ...view, capture },
     busy,
+    playable,
     status,
     settings,
     updateSettings: p => setSettings(s => ({ ...s, ...p })),
@@ -147,8 +182,8 @@ export function useGame(): Game {
       skipping.current = true;
     },
     newGame,
-    undo: () => {},
-    canUndo: false,
+    undo,
+    canUndo,
     nextRound: () => {},
     tally: { A: 0, B: 0, draws: 0 },
     match: null,
