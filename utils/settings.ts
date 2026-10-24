@@ -65,3 +65,19 @@ export function sanitizeTally(raw: unknown): Tally {
   if (!isObject(raw) || !ok(raw.A) || !ok(raw.B) || !ok(raw.draws)) return { A: 0, B: 0, draws: 0 };
   return { A: raw.A as number, B: raw.B as number, draws: raw.draws as number };
 }
+
+// Wins against a friend and against the computer are kept apart: the sides
+// mean different people, and switching must never erase either record.
+export type TallyKind = 'computer' | 'human';
+export type Tallies = Record<TallyKind, Tally>;
+export const tallyKind = (o: Opponent): TallyKind => (o === 'human' ? 'human' : 'computer');
+
+export function sanitizeTallies(raw: unknown): Tallies {
+  const r = isObject(raw) ? raw : {};
+  return { computer: sanitizeTally(r.computer), human: sanitizeTally(r.human) };
+}
+
+export function addResult(t: Tallies, kind: TallyKind, winner: Player | 'draw'): Tallies {
+  const k = t[kind];
+  return { ...t, [kind]: winner === 'draw' ? { ...k, draws: k.draws + 1 } : { ...k, [winner]: k[winner] + 1 } };
+}

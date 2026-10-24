@@ -1,7 +1,7 @@
 // Settings check: run with `node utils/settings.check.ts`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_SETTINGS, displayNames, sanitizeSettings, sanitizeTally } from './settings.ts';
+import { DEFAULT_SETTINGS, addResult, displayNames, sanitizeSettings, sanitizeTallies, sanitizeTally, tallyKind } from './settings.ts';
 
 test('bad values fall back', () => {
   const s = sanitizeSettings({ speed: 'warp', opponent: 'god', sound: 'yes', names: { A: '', B: 'x'.repeat(50) } });
@@ -32,4 +32,14 @@ test('blank names show the defaults', () => {
   assert.deepEqual(displayNames(DEFAULT_SETTINGS), { A: 'You', B: 'Computer' });
   // maxLength stops typing, not every input method: the display caps names too
   assert.equal(displayNames({ ...s, names: { A: 'x'.repeat(30), B: 'Budi' } }).A.length, 16);
+});
+test('playing a friend and playing the computer keep separate tallies', () => {
+  const zero = { A: 0, B: 0, draws: 0 };
+  const t = sanitizeTallies({ computer: { A: 2, B: 1, draws: 0 }, human: { A: 0, B: 3, draws: 1 } });
+  assert.deepEqual(addResult(t, 'human', 'A'), { computer: { A: 2, B: 1, draws: 0 }, human: { A: 1, B: 3, draws: 1 } });
+  assert.deepEqual(addResult(t, 'computer', 'draw'), { computer: { A: 2, B: 1, draws: 1 }, human: t.human });
+  assert.equal(tallyKind('hard'), 'computer');
+  assert.equal(tallyKind('human'), 'human');
+  assert.deepEqual(sanitizeTallies('x'), { computer: zero, human: zero });
+  assert.deepEqual(sanitizeTallies({ computer: { A: -1, B: 0, draws: 0 }, human: { A: 4, B: 0, draws: 0 } }), { computer: zero, human: { A: 4, B: 0, draws: 0 } });
 });

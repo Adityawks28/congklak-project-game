@@ -7,8 +7,8 @@ import { applyMove, legalMoves, newGame as freshState, startNextRound } from '@/
 import type { Board, Frame, FrameEvent, GameState, MoveResult, Player } from '@/utils/gameLogic';
 import { frameDelay, playFrames } from '@/utils/playback';
 import { playSound, primeSound, setSoundEnabled } from '@/utils/sound';
-import { DEFAULT_SETTINGS, displayNames, sanitizeSettings, sanitizeTally } from '@/utils/settings';
-import type { Settings, Tally } from '@/utils/settings';
+import { DEFAULT_SETTINGS, addResult, displayNames, sanitizeSettings, sanitizeTallies, tallyKind } from '@/utils/settings';
+import type { Settings, Tallies, Tally } from '@/utils/settings';
 import { SETTINGS_KEY, TALLY_KEY, load, save } from '@/utils/storage';
 import { matchStatus, outcomeStatus, previewText, turnStatus } from '@/utils/text';
 
@@ -64,7 +64,7 @@ export function useGame(): Game {
   const [busy, setBusy] = useState(false);
   const [lastMove, setLastMove] = useState<{ result: MoveResult; mover: Player } | null>(null);
   const [history, setHistory] = useState<GameState[]>([]); // states before each of your moves, for Undo
-  const [tally, setTally] = useState<Tally>({ A: 0, B: 0, draws: 0 });
+  const [tallies, setTallies] = useState<Tallies>(() => sanitizeTallies(null));
   const [match, setMatch] = useState<Record<Player, number>>({ A: 0, B: 0 });
   const [notice, setNotice] = useState<string | null>(null); // "New game: …" after a settings change
   const run = useRef(0);
@@ -76,6 +76,7 @@ export function useGame(): Game {
   const level = settings.opponent === 'human' ? null : settings.opponent;
   const { bestOf3 } = settings;
   const vsComputer = level !== null;
+  const kind = tallyKind(settings.opponent);
   const computerTurn = vsComputer && state.turn === 'B' && state.phase === 'playing';
   const playable = busy || computerTurn ? [] : legalMoves(state);
 
@@ -85,7 +86,7 @@ export function useGame(): Game {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) saved.speed = 'instant';
     /* eslint-disable react-hooks/set-state-in-effect -- one-time read of storage and a browser preference */
     setSettings(saved);
-    setTally(sanitizeTally(load(TALLY_KEY, null)));
+    setTallies(sanitizeTallies(load(TALLY_KEY, null)));
     if (saved.mode !== DEFAULT_SETTINGS.mode) {
       const fresh = freshState(saved.mode);
       setState(fresh);
@@ -101,14 +102,14 @@ export function useGame(): Game {
   const recordEnd = useCallback(
     (winner: Player | 'draw') => {
       playSound('win');
-      setTally(t => {
-        const next = winner === 'draw' ? { ...t, draws: t.draws + 1 } : { ...t, [winner]: t[winner] + 1 };
+      setTallies(t => {
+        const next = addResult(t, kind, winner);
         save(TALLY_KEY, next);
         return next;
       });
       if (bestOf3 && winner !== 'draw') setMatch(m => ({ ...m, [winner]: m[winner] + 1 }));
     },
-    [bestOf3],
+    [bestOf3, kind],
   );
 
   const move = useCallback(
@@ -195,12 +196,6 @@ export function useGame(): Game {
     const opponentChanged = p.opponent !== undefined && p.opponent !== settings.opponent;
     const modeChanged = p.mode !== undefined && p.mode !== settings.mode;
     if (!opponentChanged && !modeChanged) return;
-    if (opponentChanged && (p.opponent === 'human') !== (settings.opponent === 'human')) {
-      // the sides change meaning (Player 1 vs You), so the old wins no longer apply
-      const zero = { A: 0, B: 0, draws: 0 };
-      setTally(zero);
-      save(TALLY_KEY, zero);
-    }
     setMatch({ A: 0, B: 0 });
     startOver(next.mode);
     const who = next.opponent === 'human' ? 'for two players' : `against the computer (${next.opponent[0].toUpperCase()}${next.opponent.slice(1)})`;
@@ -256,7 +251,7 @@ export function useGame(): Game {
     undo,
     canUndo,
     nextRound,
-    tally,
+    tally: tallies[kind],
     match: bestOf3 ? match : null,
     previewOf,
   };
