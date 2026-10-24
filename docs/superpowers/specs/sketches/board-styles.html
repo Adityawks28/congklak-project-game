@@ -1,0 +1,163 @@
+<style>
+  .cards { grid-template-columns: 1fr !important; }
+  .card-image { aspect-ratio: auto !important; display: block !important; padding: 18px 10px 6px; }
+  .card-image svg { display: block; width: 100%; height: auto; }
+  .strip-label { font-size: .8rem; color: var(--text-secondary); margin: 6px 4px 0; }
+</style>
+
+<h2>Which look feels like <em>our</em> congklak?</h2>
+<p class="subtitle">All three follow your photo: a long carved board, 2 rows of 7, a big store at each end, green glass marbles. They differ in drawing style and in where the count sits. The little hopping marble shows the drop motion. Click one, or tell me what to mix.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" id="img-a"></div>
+    <div class="card-body"><h3>A · Storybook ink</h3><p>Bold dark outlines and flat colors, like a picture book or a 2D cartoon. The count is painted on the wood next to each hole.</p></div>
+  </div>
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" id="img-b"></div>
+    <div class="card-body"><h3>B · Animated-film shading</h3><p>No outlines. Soft two-tone shading on dark red wood with light carved vines, closest to your photo. Marbles get a lit side and a shadow side. The count sits in a cream chip on each hole.</p></div>
+  </div>
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" id="img-c"></div>
+    <div class="card-body"><h3>C · Carved woodcut</h3><p>Golden teak with heavy carved ornament, like a woodblock print. The count sits in a dark tag at the bottom of each hole.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const S = {
+    a: { bg:'#f1e4cc', top:'#c47a48', wood:'#9a5530', side:'#5e2e16', line:'#2a130a', lw:3.5,
+         hole:'#3a1a0c', holeShade:'#1f0d05', rimHi:'#d99060', carve:'#5e2e16', carveW:3,
+         m:['#8fe49a','#2f9e4a','#155a28'], mline:'#0f3a1a', mlw:1.8, cel:false, cast:false, num:'rim' },
+    b: { bg:'#eadcc5', top:'#7a3622', wood:'#5b2717', side:'#33140b', line:'none', lw:0,
+         hole:'#2a0f07', holeShade:'#160704', rimHi:'#8c4a30', carve:'#a8613f', carveW:2.6,
+         m:['#c4f7bd','#3fbf5f','#1d7a37'], mline:'none', mlw:0, cel:true, cast:true, num:'chip' },
+    c: { bg:'#efe6d6', top:'#e3aa6c', wood:'#c98a4b', side:'#8a5527', line:'#3b1f0c', lw:2.6,
+         hole:'#4a2810', holeShade:'#2e170a', rimHi:'#f0c088', carve:'#3b1f0c', carveW:3.6,
+         m:['#a8eeb0','#2aa64d','#13652c'], mline:'#0b3d19', mlw:2.2, cel:false, cast:false, num:'lip' }
+  };
+  const f = v => +v.toFixed(1);
+  const strokeAttr = s => s.line === 'none' ? '' : `stroke="${s.line}" stroke-width="${s.lw}"`;
+
+  function marble(s, x, y, r) {
+    let g = '';
+    if (s.cast) g += `<ellipse cx="${f(x + r*.2)}" cy="${f(y + r*.6)}" rx="${f(r*.95)}" ry="${f(r*.45)}" fill="#000" opacity=".35"/>`;
+    g += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${s.m[1]}" ${s.mline === 'none' ? '' : `stroke="${s.mline}" stroke-width="${s.mlw}"`}/>`;
+    if (s.cel) {
+      const p1 = [x - .707*r, y + .707*r], p2 = [x + .866*r, y - .5*r];
+      g += `<path d="M ${f(p1[0])} ${f(p1[1])} A ${f(r)} ${f(r)} 0 0 0 ${f(p2[0])} ${f(p2[1])} A ${f(r*1.2)} ${f(r*1.2)} 0 0 1 ${f(p1[0])} ${f(p1[1])} Z" fill="${s.m[2]}"/>`;
+    }
+    g += `<circle cx="${f(x - r*.22)}" cy="${f(y - r*.22)}" r="${f(r*.48)}" fill="${s.m[0]}" opacity=".85"/>`;
+    g += `<ellipse cx="${f(x - r*.38)}" cy="${f(y - r*.42)}" rx="${f(r*.24)}" ry="${f(r*.14)}" transform="rotate(-35 ${f(x - r*.38)} ${f(y - r*.42)})" fill="#fff"/>`;
+    return g;
+  }
+
+  // Countable patterns: dice shapes up to 6, flower for 7 (the starting count), rings after.
+  function layout(n, R) {
+    const pts = [];
+    const ring = (k, rad, m, off = 0) => { for (let i = 0; i < k; i++) { const a = off + i * 2 * Math.PI / k - Math.PI / 2; pts.push([Math.cos(a) * rad, Math.sin(a) * rad, m]); } };
+    if (n <= 0) return pts;
+    if (n === 1) pts.push([0, 0, R * .34]);
+    else if (n === 2) ring(2, R * .4, R * .3, Math.PI / 2);
+    else if (n === 3) ring(3, R * .42, R * .3);
+    else if (n === 4) ring(4, R * .42, R * .28, Math.PI / 4);
+    else if (n === 5) { pts.push([0, 0, R * .25]); ring(4, R * .52, R * .25, Math.PI / 4); }
+    else if (n === 6) ring(6, R * .5, R * .25);
+    else if (n === 7) { pts.push([0, 0, R * .24]); ring(6, R * .52, R * .24); }
+    else if (n <= 9) { pts.push([0, 0, R * .21]); ring(n - 1, R * .57, R * .21); }
+    else if (n <= 12) { ring(3, R * .25, R * .18); ring(n - 3, R * .63, R * .18); }
+    else { ring(4, R * .26, R * .17, Math.PI / 4); ring(10, R * .63, R * .17); }
+    return pts;
+  }
+
+  function hole(s, x, y, R, n, row) {
+    let g = `<circle cx="${x}" cy="${y + 2.5}" r="${R + 3}" fill="${s.rimHi}" opacity=".75"/>`;
+    g += `<circle cx="${x}" cy="${y}" r="${R}" fill="${s.hole}" ${strokeAttr(s)}/>`;
+    g += `<path d="M ${x - R} ${y} A ${R} ${R} 0 0 1 ${x + R} ${y} A ${f(R*1.45)} ${f(R*1.45)} 0 0 0 ${x - R} ${y} Z" fill="${s.holeShade}"/>`;
+    for (const [dx, dy, m] of layout(n, R)) g += marble(s, x + dx, y + dy + 2, m);
+    if (s.num === 'rim') {
+      const ty = row === 'top' ? y - R - 9 : y + R + 22;
+      g += `<text x="${x}" y="${ty}" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-weight="800" font-size="19" fill="#fff4dc" stroke="${s.line}" stroke-width="4" paint-order="stroke">${n}</text>`;
+    } else if (s.num === 'chip') {
+      const cx = x + R * .74, cy = y - R * .74;
+      g += `<circle cx="${f(cx)}" cy="${f(cy)}" r="13" fill="#f7e6c4"/>`;
+      g += `<text x="${f(cx)}" y="${f(cy + 5)}" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-weight="800" font-size="15" fill="#2a130a">${n}</text>`;
+    } else {
+      g += `<rect x="${x - 15}" y="${y + R - 12}" width="30" height="21" rx="6" fill="#3b1f0c" stroke="#f0c088" stroke-width="1.5"/>`;
+      g += `<text x="${x}" y="${y + R + 4}" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-weight="800" font-size="15" fill="#f7e2bd">${n}</text>`;
+    }
+    return g;
+  }
+
+  function store(s, x, y, n, label) {
+    const rx = 46, ry = 86;
+    let g = `<ellipse cx="${x}" cy="${y + 3}" rx="${rx + 3}" ry="${ry + 3}" fill="${s.rimHi}" opacity=".75"/>`;
+    g += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${s.hole}" ${strokeAttr(s)}/>`;
+    g += `<path d="M ${x - rx} ${y} A ${rx} ${ry} 0 0 1 ${x + rx} ${y} A ${rx * 1.3} ${ry * 1.1} 0 0 0 ${x - rx} ${y} Z" fill="${s.holeShade}"/>`;
+    // pile from the bottom up, honeycomb
+    const m = 10.5, pts = [];
+    for (let row = 0; row < 12 && pts.length < n; row++) {
+      const yy = y + ry - 16 - row * m * 1.75;
+      const off = row % 2 ? m : 0;
+      for (let xx = x - rx + 14 + off; xx <= x + rx - 14 && pts.length < n; xx += m * 2.05) {
+        if (((xx - x) / (rx - 8)) ** 2 + ((yy - y) / (ry - 8)) ** 2 <= 1) pts.push([xx, yy]);
+      }
+    }
+    for (const [px, py] of pts) g += marble(s, px, py, m);
+    const ty = y - ry + 34;
+    g += `<rect x="${x - 24}" y="${ty - 24}" width="48" height="32" rx="9" fill="${s.num === 'lip' ? '#3b1f0c' : '#f7e6c4'}" ${s.num === 'lip' ? 'stroke="#f0c088" stroke-width="1.5"' : ''}/>`;
+    g += `<text x="${x}" y="${ty}" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-weight="800" font-size="22" fill="${s.num === 'lip' ? '#f7e2bd' : '#2a130a'}">${n}</text>`;
+    return g;
+  }
+
+  function vine(s, x1, x2, y, flip) {
+    let d = `M ${x1} ${y}`, leaves = '';
+    for (let x = x1; x < x2; x += 30) {
+      const up = ((x - x1) / 30) % 2 === 0 ? -1 : 1;
+      d += ` Q ${x + 15} ${y + up * 9 * flip} ${x + 30} ${y}`;
+      const lx = x + 15, ly = y + up * 9 * flip;
+      leaves += `<ellipse cx="${lx}" cy="${f(ly + up * 6 * flip)}" rx="7" ry="3.2" transform="rotate(${up * flip * 40} ${lx} ${f(ly + up * 6 * flip)})" fill="${s.carve}"/>`;
+    }
+    return `<path d="${d}" fill="none" stroke="${s.carve}" stroke-width="${s.carveW}" stroke-linecap="round"/>` + leaves;
+  }
+
+  function curl(s, x, y, dir) {
+    return `<path d="M ${x} ${y} c ${dir*-8} -14 ${dir*-26} -10 ${dir*-24} 4 c ${dir*2} 10 ${dir*14} 10 ${dir*14} 2" fill="none" stroke="${s.carve}" stroke-width="${s.carveW}" stroke-linecap="round"/>` +
+           `<path d="M ${x} ${y + 40} c ${dir*-8} 14 ${dir*-26} 10 ${dir*-24} -4 c ${dir*2} -10 ${dir*14} -10 ${dir*14} -2" fill="none" stroke="${s.carve}" stroke-width="${s.carveW}" stroke-linecap="round"/>`;
+  }
+
+  function board(key) {
+    const s = S[key];
+    const body = 'M 36 160 C 56 68 178 38 300 38 L 700 38 C 822 38 944 68 964 160 C 944 252 822 282 700 282 L 300 282 C 178 282 56 252 36 160 Z';
+    let g = `<rect width="1000" height="340" fill="${s.bg}" rx="14"/>`;
+    g += `<ellipse cx="500" cy="312" rx="440" ry="16" fill="#000" opacity=".16"/>`;
+    g += `<defs><clipPath id="clip-${key}"><path d="${body}"/></clipPath></defs>`;
+    g += `<path d="${body}" transform="translate(0 18)" fill="${s.side}" ${strokeAttr(s)}/>`;
+    g += `<path d="${body}" fill="${s.top}"/>`;
+    g += `<g clip-path="url(#clip-${key})"><path d="${body}" transform="translate(0 7)" fill="${s.wood}"/></g>`;
+    if (s.line !== 'none') g += `<path d="${body}" fill="none" stroke="${s.line}" stroke-width="${s.lw}"/>`;
+    g += vine(s, 198, 798, 62, 1) + vine(s, 198, 798, 260, -1);
+    g += curl(s, 70, 140, -1) + curl(s, 930, 140, 1);
+    const xs = [...Array(7)].map((_, i) => Math.round(220 + i * 93.3));
+    const counts = { top: [7, 7, 7, 7, 7, 7, 7], bot: [7, 7, 7, 1, 7, 7, 7] };
+    xs.forEach((x, i) => { g += hole(s, x, 112, 37, counts.top[i], 'top'); });
+    xs.forEach((x, i) => { g += hole(s, x, 210, 37, counts.bot[i], 'bot'); });
+    g += store(s, 120, 160, 12) + store(s, 880, 160, 5);
+    // hopping marble: shows the drop motion
+    g += `<g>${marble(s, 0, 0, 9)}<animateMotion dur="1.3s" repeatCount="indefinite" path="M ${xs[2]} 210 Q ${(xs[2] + xs[3]) / 2} 150 ${xs[3]} 212"/></g>`;
+    return `<svg viewBox="0 0 1000 340" role="img" aria-label="Board style ${key}">${g}</svg>`;
+  }
+
+  function strip(key) {
+    const s = S[key], counts = [1, 2, 3, 4, 5, 6, 7, 9, 12, 18];
+    let g = `<rect width="1000" height="130" rx="40" fill="${s.wood}" ${strokeAttr(s)}/>`;
+    counts.forEach((n, i) => { g += hole(s, 60 + i * 98, 58, 37, n, 'top'); });
+    return `<svg viewBox="0 0 1000 130" role="img" aria-label="Seed counts 1 to 18 in style ${key}">${g}</svg>`;
+  }
+
+  for (const k of ['a', 'b', 'c']) {
+    const el = document.getElementById('img-' + k);
+    el.innerHTML = board(k) + `<p class="strip-label">Readability test: 1, 2, 3, 4, 5, 6, 7, 9, 12, 18 marbles</p>` + strip(k);
+  }
+})();
+</script>
