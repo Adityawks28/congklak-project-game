@@ -7,6 +7,7 @@ import { man, woman } from './characters/pixel';
 import ControlBar from './ControlBar';
 import GameOverDialog from './GameOverDialog';
 import MoveEffects from './board/MoveEffects';
+import PaperDecor, { TitleSprig } from './PaperDecor';
 import { useGame } from '@/hooks/useGame';
 import { STORE, startNextRound } from '@/utils/gameLogic';
 import type { GameState } from '@/utils/gameLogic';
@@ -37,16 +38,31 @@ export default function CongklakGame() {
   const upcoming = roundOver ? startNextRound(state) : null;
 
   return (
+    <>
+    <PaperDecor />
     <div className="game">
       <header className="game-head">
-        <h1>Congklak</h1>
+        <h1>
+          <TitleSprig side="left" />
+          Congklak
+          <TitleSprig side="right" />
+        </h1>
         <p className="tagline">The Indonesian game of holes and marbles. Play a friend or the computer.</p>
       </header>
       <ControlBar game={game} />
       <p className="status" aria-live="polite">
         {game.status}
       </p>
-      <p className="hint">{preview?.text}</p>
+      {/* Skip lives here, not in the button row: this line is empty during a move, so nothing shifts. */}
+      <p className="hint">
+        {game.busy ? (
+          <button type="button" className="btn" onClick={game.skip}>
+            Skip
+          </button>
+        ) : (
+          preview?.text
+        )}
+      </p>
       <div className="scene">
         <PixelPerson sprite={MAN} className="char-man" label="Ask the man in the blangkon about congklak" onOpen={setAsking} />
         <Board
@@ -87,5 +103,6 @@ export default function CongklakGame() {
         onClose={() => setDismissed(state)}
       />
     </div>
+    </>
   );
 }
