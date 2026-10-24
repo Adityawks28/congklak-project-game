@@ -44,3 +44,25 @@ export function outcomeStatus(r: MoveResult, mover: Player, names: Record<Player
   }
   return '';
 }
+
+// What a move would do, for the preview hint. Needs the move's frames, to see a relay.
+export function previewText(r: MoveResult): string {
+  const relayed = r.frames.filter(f => f.event === 'pick').length > 1;
+  const mover = owner(r.frames[0]?.active ?? 0);
+  let what: string;
+  if (r.outcome === 'extraTurn') what = r.state.phase === 'playing' ? 'lands in your store: go again' : 'lands in your store';
+  else if (r.outcome === 'capture') what = `captures ${marbles(r.captured)}`;
+  else if (owner(r.lastIndex) === mover) what = `stops in your hole ${r.lastIndex - (mover === 'A' ? 0 : 8) + 1}`;
+  else what = 'ends on the other side';
+  const text = relayed ? `keeps going, then ${what}` : what;
+  return text[0].toUpperCase() + text.slice(1);
+}
+
+// Best of 3: '' until a side has 2 wins.
+export function matchStatus(m: Record<Player, number>, names: Record<Player, string>, vsComputer: boolean): string {
+  const win: Player | null = m.A >= 2 ? 'A' : m.B >= 2 ? 'B' : null;
+  if (!win) return '';
+  const score = `${m[win]} to ${m[win === 'A' ? 'B' : 'A']}`;
+  if (vsComputer) return win === 'A' ? `You win the match, ${score}!` : `The computer wins the match, ${score}.`;
+  return `${names[win]} wins the match, ${score}!`;
+}

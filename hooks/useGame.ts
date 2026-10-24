@@ -7,9 +7,10 @@ import { applyMove, legalMoves, newGame as freshState } from '@/utils/gameLogic'
 import type { Board, Frame, FrameEvent, GameState, MoveResult, Player } from '@/utils/gameLogic';
 import { frameDelay, playFrames } from '@/utils/playback';
 import { playSound, primeSound, setSoundEnabled } from '@/utils/sound';
-import { DEFAULT_SETTINGS, displayNames } from '@/utils/settings';
+import { DEFAULT_SETTINGS, displayNames, sanitizeSettings, sanitizeTally } from '@/utils/settings';
 import type { Settings, Tally } from '@/utils/settings';
-import { outcomeStatus, turnStatus } from '@/utils/text';
+import { SETTINGS_KEY, TALLY_KEY, load, save } from '@/utils/storage';
+import { matchStatus, outcomeStatus, previewText, turnStatus } from '@/utils/text';
 
 export interface View {
   board: Board;
@@ -63,6 +64,9 @@ export function useGame(): Game {
   const [busy, setBusy] = useState(false);
   const [lastMove, setLastMove] = useState<{ result: MoveResult; mover: Player } | null>(null);
   const [history, setHistory] = useState<GameState[]>([]); // states before each of your moves, for Undo
+  const [tally, setTally] = useState<Tally>({ A: 0, B: 0, draws: 0 });
+  const [match, setMatch] = useState<Record<Player, number>>({ A: 0, B: 0 });
+  const [notice, setNotice] = useState<string | null>(null); // "New game: …" after a settings change
   const run = useRef(0);
   const skipping = useRef(false);
 
@@ -70,15 +74,24 @@ export function useGame(): Game {
 
   const names = displayNames(settings);
   const level = settings.opponent === 'human' ? null : settings.opponent;
+  const { bestOf3 } = settings;
   const vsComputer = level !== null;
   const computerTurn = vsComputer && state.turn === 'B' && state.phase === 'playing';
   const playable = busy || computerTurn ? [] : legalMoves(state);
 
+  // Saved settings and tally load after mount, so the server render and the first client render match.
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of a browser preference
-      setSettings(s => ({ ...s, speed: 'instant' }));
+    const saved = sanitizeSettings(load(SETTINGS_KEY, null));
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) saved.speed = 'instant';
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time read of storage and a browser preference */
+    setSettings(saved);
+    setTally(sanitizeTally(load(TALLY_KEY, null)));
+    if (saved.mode !== DEFAULT_SETTINGS.mode) {
+      const fresh = freshState(saved.mode);
+      setState(fresh);
+      setView(idle(fresh.board));
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     const runs = run;
     return () => {
       runs.current++; // unmounting cancels any move still playing
@@ -93,6 +106,7 @@ export function useGame(): Game {
       const id = ++run.current;
       skipping.current = false;
       primeSound();
+      setNotice(null);
       setBusy(true);
       let captureShown = false;
       const showCapture = () => {
@@ -112,15 +126,23 @@ export function useGame(): Game {
       void playFrames(frames, settings.speed, ctl, onFrame).then(res => {
         if (res === 'cancelled' || run.current !== id) return;
         showCapture();
-        if (result.state.phase === 'gameOver') playSound('win');
-        else if (result.outcome === 'extraTurn') playSound('extra');
+        const { phase, winner } = result.state;
+        if (phase === 'gameOver' && winner) {
+          playSound('win');
+          setTally(t => {
+            const next = winner === 'draw' ? { ...t, draws: t.draws + 1 } : { ...t, [winner]: t[winner] + 1 };
+            save(TALLY_KEY, next);
+            return next;
+          });
+          if (bestOf3 && winner !== 'draw') setMatch(m => ({ ...m, [winner]: m[winner] + 1 }));
+        } else if (result.outcome === 'extraTurn') playSound('extra');
         setState(result.state);
         setView(idle(result.state.board));
         setLastMove({ result, mover });
         setBusy(false);
       });
     },
-    [busy, state, settings.speed],
+    [busy, state, settings.speed, bestOf3],
   );
 
   // The computer waits half a second, then moves. Any reset bumps the run id,
@@ -146,12 +168,43 @@ export function useGame(): Game {
     setView(idle(to.board));
     setCapture(null);
     setLastMove(null);
+    setNotice(null);
     setBusy(false);
   };
 
-  const newGame = () => {
+  const matchOver = matchStatus(match, names, vsComputer) !== '';
+  const startOver = (mode = settings.mode) => {
     setHistory([]);
-    reset(freshState(settings.mode));
+    if (matchOver) setMatch({ A: 0, B: 0 });
+    reset(freshState(mode));
+  };
+  const newGame = () => startOver();
+
+  // Changing who you play or the rules starts a new game, and the status says so.
+  const updateSettings = (p: Partial<Settings>) => {
+    const next = { ...settings, ...p };
+    setSettings(next);
+    save(SETTINGS_KEY, next);
+    if (p.bestOf3 !== undefined && p.bestOf3 !== settings.bestOf3) setMatch({ A: 0, B: 0 });
+    const opponentChanged = p.opponent !== undefined && p.opponent !== settings.opponent;
+    const modeChanged = p.mode !== undefined && p.mode !== settings.mode;
+    if (!opponentChanged && !modeChanged) return;
+    if (opponentChanged && (p.opponent === 'human') !== (settings.opponent === 'human')) {
+      // the sides change meaning (Player 1 vs You), so the old wins no longer apply
+      const zero = { A: 0, B: 0, draws: 0 };
+      setTally(zero);
+      save(TALLY_KEY, zero);
+    }
+    setMatch({ A: 0, B: 0 });
+    startOver(next.mode);
+    const who = next.opponent === 'human' ? 'for two players' : `against the computer (${next.opponent[0].toUpperCase()}${next.opponent.slice(1)})`;
+    setNotice(opponentChanged ? `New game ${who}.` : `New game with ${next.mode} rules.`);
+  };
+
+  const previewOf = (slot: number) => {
+    if (!settings.preview || !playable.includes(slot)) return null;
+    const r = applyMove(state, slot); // recorded: the hint needs the frames to spot a relay
+    return { lastIndex: r.lastIndex, text: previewText(r) };
   };
 
   const canUndo = vsComputer && history.length > 0 && state.phase !== 'gameOver';
@@ -163,11 +216,13 @@ export function useGame(): Game {
 
   const turnText = turnStatus(state, names, vsComputer);
   let status = turnText;
-  if (lastMove) {
+  if (notice) status = `${notice} ${turnText}`;
+  else if (lastMove) {
     const out = outcomeStatus(lastMove.result, lastMove.mover, names, vsComputer);
     const extraOnly = lastMove.result.outcome === 'extraTurn' && state.phase === 'playing';
     status = extraOnly ? out : [out, turnText].filter(Boolean).join(' ');
   }
+  if (state.phase === 'gameOver' && bestOf3) status = [status, matchStatus(match, names, vsComputer)].filter(Boolean).join(' ');
 
   return {
     state,
@@ -176,7 +231,7 @@ export function useGame(): Game {
     playable,
     status,
     settings,
-    updateSettings: p => setSettings(s => ({ ...s, ...p })),
+    updateSettings,
     play,
     skip: () => {
       skipping.current = true;
@@ -185,8 +240,8 @@ export function useGame(): Game {
     undo,
     canUndo,
     nextRound: () => {},
-    tally: { A: 0, B: 0, draws: 0 },
-    match: null,
-    previewOf: () => null,
+    tally,
+    match: bestOf3 ? match : null,
+    previewOf,
   };
 }

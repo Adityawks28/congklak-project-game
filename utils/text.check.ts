@@ -1,7 +1,7 @@
 // UI text check: run with `node utils/text.check.ts`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { holeLabel, outcomeStatus, storeLabel, turnStatus } from './text.ts';
+import { holeLabel, matchStatus, outcomeStatus, previewText, storeLabel, turnStatus } from './text.ts';
 import { applyMove, newGame } from './gameLogic.ts';
 import type { GameState } from './gameLogic.ts';
 
@@ -67,6 +67,22 @@ test('a store landing that ends the game does not say go again', () => {
   assert.equal(r.outcome, 'extraTurn');
   assert.equal(r.state.phase, 'gameOver');
   assert.equal(outcomeStatus(r, 'A', vsCpu.names, true), '');
+});
+
+test('preview text', () => {
+  assert.equal(previewText(applyMove(newGame(), 0)), 'Lands in your store: go again');
+  // hole 4 from the start relays once, then captures 9
+  assert.equal(previewText(applyMove(newGame(), 3)), 'Keeps going, then captures 9 marbles');
+  assert.equal(previewText(applyMove({ ...newGame(), board: [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0] }, 2)), 'Stops in your hole 4');
+  const b = Array(16).fill(0); b[6] = 2; b[0] = 1; b[12] = 1;
+  assert.equal(previewText(applyMove({ ...newGame(), board: b }, 6)), 'Ends on the other side');
+});
+
+test('match status names the winner at 2 wins', () => {
+  assert.equal(matchStatus({ A: 1, B: 1 }, vsCpu.names, true), '');
+  assert.equal(matchStatus({ A: 2, B: 1 }, vsCpu.names, true), 'You win the match, 2 to 1!');
+  assert.equal(matchStatus({ A: 0, B: 2 }, vsCpu.names, true), 'The computer wins the match, 2 to 0.');
+  assert.equal(matchStatus({ A: 1, B: 2 }, friends.names, false), 'Budi wins the match, 2 to 1!');
 });
 
 test('status text has no em dash', () => {
