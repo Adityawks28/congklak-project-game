@@ -186,3 +186,53 @@ body {
   border-radius: 50%;
   pointer-events: none;
 }
+
+/* Characters: beside the board when there is room, in a row under it otherwise */
+.scene {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'man board woman';
+  align-items: end;
+  justify-self: stretch; /* .game centres its children; the board column needs the full width */
+  gap: 12px;
+  --px: 5;
+}
+.scene > .board { grid-area: board; align-self: center; }
+.char-man { grid-area: man; }
+.char-woman { grid-area: woman; }
+.px { padding: 4px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.px:hover { background: rgb(42 19 10 / 0.07); }
+.px svg { display: block; width: calc(22px * var(--px)); height: calc(40px * var(--px)); }
+@media (max-width: 999px) {
+  .scene { grid-template-columns: 1fr 1fr; grid-template-areas: 'board board' 'man woman'; --px: 3; }
+  .char-man { justify-self: end; margin-right: 12px; }
+  .char-woman { justify-self: start; margin-left: 12px; }
+}
+
+/* The story cloud */
+.story {
+  position: fixed;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+.story::backdrop { background: transparent; }
+.story-shape { position: absolute; overflow: visible; pointer-events: none; }
+.story-cloud .story-shape { inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 4px 0 rgb(42 19 10 / 0.18)); }
+/* the text box sits inside the cloud's inner ellipse (corners at 1/sqrt(2) of its radii) */
+.story-cloud .story-inner { position: absolute; left: 17.5%; right: 17.5%; top: 18%; bottom: 18%; overflow: auto; }
+.story-panel { border: 3px solid var(--ink); border-radius: 16px; background: #fff; }
+.story-panel .story-shape { left: 0; top: calc(100% - 1px); width: 100%; height: 18px; }
+.story-panel .story-inner { padding: 16px; overflow: auto; max-height: inherit; }
+.story-inner { display: flex; flex-direction: column; justify-content: center; gap: 10px; font-size: 1rem; line-height: 1.4; }
+.story-hello { margin: 0; font-weight: 700; font-size: 1.1rem; }
+.story-btn { justify-content: flex-start; text-align: left; }
+.story-title { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.story-count { font-weight: 600; font-size: 0.9rem; margin-left: 6px; }
+.story-text { margin: 0; }
+.story-sources { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.story-sources a { color: var(--ink); font-weight: 700; }
+.story-nav { display: flex; gap: 10px; justify-content: space-between; }

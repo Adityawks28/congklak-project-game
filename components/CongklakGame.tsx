@@ -1,6 +1,9 @@
 'use client';
 import { useState } from 'react';
 import Board from './board/Board';
+import PixelPerson from './characters/PixelPerson';
+import StoryCloud from './characters/StoryCloud';
+import { man, woman } from './characters/pixel';
 import ControlBar from './ControlBar';
 import GameOverDialog from './GameOverDialog';
 import MoveEffects from './board/MoveEffects';
@@ -10,6 +13,9 @@ import type { GameState } from '@/utils/gameLogic';
 import { displayNames } from '@/utils/settings';
 import { matchStatus } from '@/utils/text';
 
+const MAN = man();
+const WOMAN = woman();
+
 export default function CongklakGame() {
   const game = useGame();
   const names = displayNames(game.settings);
@@ -17,6 +23,7 @@ export default function CongklakGame() {
   // The dialog shows once per finished game; a new game is a new state object.
   const [dismissed, setDismissed] = useState<GameState | null>(null);
   const [hover, setHover] = useState<number | null>(null);
+  const [asking, setAsking] = useState<HTMLElement | null>(null);
   const preview = hover === null ? null : game.previewOf(hover);
   const { state } = game;
   const over = state.phase === 'gameOver';
@@ -37,7 +44,9 @@ export default function CongklakGame() {
         {game.status}
       </p>
       <p className="hint">{preview?.text}</p>
-      <Board
+      <div className="scene">
+        <PixelPerson sprite={MAN} className="char-man" label="Ask the man in the blangkon about congklak" onOpen={setAsking} />
+        <Board
         board={game.view.board}
         burnt={state.burnt}
         playable={game.playable}
@@ -51,7 +60,10 @@ export default function CongklakGame() {
         onPreview={setHover}
         onSkip={game.skip}
         overlay={o => <MoveEffects view={game.view} orientation={o} />}
-      />
+        />
+        <PixelPerson sprite={WOMAN} className="char-woman" label="Ask the woman in the kebaya about congklak" onOpen={setAsking} />
+      </div>
+      {asking && <StoryCloud anchor={asking} mode={game.settings.mode} onClose={() => setAsking(null)} />}
       <ControlBar game={game} />
       <p className="tally">
         Wins: {names.A} {tally.A}, {names.B} {tally.B}. Draws: {tally.draws}.
